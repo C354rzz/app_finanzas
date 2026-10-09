@@ -18,3 +18,13 @@ Documentación: `docs/ARQUITECTURA.md`, `docs/DEF.md`, `docs/modelo-datos.dbml`.
 | Detener | `docker compose down` (con `-v` **borra la base de datos**) |
 
 ⚠️ Los datos personales viven fuera de esta carpeta (`..\2026\`). Nunca copies PDFs ni el Excel aquí.
+
+## Primer uso
+
+```powershell
+docker compose up -d
+docker compose exec web python manage.py createsuperuser --email tu@email.com
+docker compose exec web python manage.py crear_hogar --nombre "Mi Familia" --email tu@email.com
+```
+
+Luego entra a http://localhost:8000/admin/ (en el plan 2 se agrega la interfaz principal).
