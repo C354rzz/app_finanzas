@@ -22,6 +22,9 @@ class Filtros:
     texto: str = ""
 
 
+SIN_FILTROS = Filtros()
+
+
 @dataclass(frozen=True)
 class Totales:
     ingresos: Decimal
@@ -37,7 +40,7 @@ class Totales:
         return self.ingresos - self.gastos
 
 
-def movimientos_entre(hogar, inicio, fin, filtros=Filtros()):
+def movimientos_entre(hogar, inicio, fin, filtros=SIN_FILTROS):
     consulta = (
         Movimiento.objects.del_hogar(hogar)
         .filter(fecha__range=(inicio, fin))
@@ -59,7 +62,7 @@ def movimientos_entre(hogar, inicio, fin, filtros=Filtros()):
     return consulta
 
 
-def movimientos_del_mes(hogar, anio, mes, filtros=Filtros()):
+def movimientos_del_mes(hogar, anio, mes, filtros=SIN_FILTROS):
     inicio, fin = rango_del_mes(anio, mes)
     return movimientos_entre(hogar, inicio, fin, filtros)
 
