@@ -9,7 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        # Mirror oficial en ECR: el pull desde Docker Hub falla en los runners de GitHub.
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_DB: finanzas
           POSTGRES_USER: finanzas
@@ -39,3 +40,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sh tests/verificar_imagen.sh
+        env:
+          PYTHON_IMAGE: public.ecr.aws/docker/library/python:3.12-slim

@@ -5,7 +5,7 @@ set -e
 SENUELOS="docs/senuelo.pdf apps/senuelo.xlsx apps/senuelo.xls finanzas/senuelo.xml tests/senuelo.zip tests/senuelo.csv apps/.env"
 for f in $SENUELOS; do echo "dato sensible" > "$f"; done
 trap 'for f in $SENUELOS; do rm -f "$f"; done' EXIT
-docker build -q -f docker/Dockerfile -t finanzas:verificar-imagen . > /dev/null
+docker build -q --build-arg PYTHON_IMAGE="${PYTHON_IMAGE:-python:3.12-slim}" -f docker/Dockerfile -t finanzas:verificar-imagen . > /dev/null
 encontrados=$(docker run --rm --entrypoint sh finanzas:verificar-imagen -c "find /app -name 'senuelo*' -o -path '/app/apps/.env'")
 if [ -n "$encontrados" ]; then
     echo "FALLA: archivos sensibles dentro de la imagen:"; echo "$encontrados"; exit 1
