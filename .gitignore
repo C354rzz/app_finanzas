@@ -1,4 +1,5 @@
 # --- Datos personales: NUNCA al repositorio ---
+# (viven fuera del repo, en ../2026/; esto es una red de seguridad)
 /20[0-9][0-9]/
 *.pdf
 *.xlsx

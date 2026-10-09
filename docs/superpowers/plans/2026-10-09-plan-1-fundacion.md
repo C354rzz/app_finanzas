@@ -29,7 +29,7 @@
 - `apps/calculos/` **no importa nada de Django**.
 - Todo modelo de negocio hereda de `apps.core.models.ModeloDeHogar` (excepto catálogos globales como `TasaMercado`).
 - **Ningún dato personal en el repo:** nada de `2026/`, PDFs, Excel ni `.env`. Los fixtures de prueba son sintéticos o anónimos.
-- Todos los comandos se ejecutan **dentro de Docker** (`docker compose run --rm web ...`) desde PowerShell en la raíz `Finanzas\`. No crear `.venv/` en el repo.
+- La app y el repo git viven en **`Finanzas\app_finanzas\`**. Todos los comandos se ejecutan desde PowerShell en esa carpeta y **dentro de Docker** (`docker compose run --rm web ...`). No crear `.venv/` en el repo. Los datos personales (`..\2026\`) y la memoria del proyecto (`..\CLAUDE.md`) quedan **fuera** del repo.
 - Finales de línea LF (ya forzado por `.gitattributes`).
 - Cada commit termina con la línea: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
 
@@ -46,8 +46,8 @@
 ## Estructura de archivos
 
 ```
-Finanzas\
-├── .dockerignore                      (T1) excluye datos personales de la imagen
+Finanzas\app_finanzas\                (raíz del repo; ya contiene .gitignore, .gitattributes y docs\)
+├── .dockerignore                      (T1) excluye archivos sensibles de la imagen
 ├── .env.example                       (T1)
 ├── README.md                          (T1) comandos de desarrollo
 ├── pyproject.toml / uv.lock           (T1; T2 añade config de ruff)
@@ -122,7 +122,7 @@ addopts = "-q --import-mode=importlib"
 
 - [ ] **Step 2: Generar `uv.lock` con Docker (sin instalar uv en Windows)**
 
-Run (PowerShell, en `Finanzas\`):
+Run (PowerShell, en `Finanzas\app_finanzas\`):
 ```powershell
 docker run --rm -v "${PWD}:/app" -w /app ghcr.io/astral-sh/uv:python3.12-bookworm-slim uv lock
 ```
@@ -421,7 +421,7 @@ Expected: `{"estado": "ok"}`. Luego `docker compose down` (sin `-v`).
 App web (Django + HTMX + PostgreSQL) que reemplaza el planeador en Excel.
 Documentación: `docs/ARQUITECTURA.md`, `docs/DEF.md`, `docs/modelo-datos.dbml`.
 
-## Desarrollo (PowerShell, en esta carpeta)
+## Desarrollo (PowerShell, en `Finanzas\app_finanzas\`)
 
 | Acción | Comando |
 |---|---|
@@ -435,7 +435,7 @@ Documentación: `docs/ARQUITECTURA.md`, `docs/DEF.md`, `docs/modelo-datos.dbml`.
 | Cambié dependencias | `docker run --rm -v "${PWD}:/app" -w /app ghcr.io/astral-sh/uv:python3.12-bookworm-slim uv lock` y `docker compose build` |
 | Detener | `docker compose down` (con `-v` **borra la base de datos**) |
 
-⚠️ Las carpetas de año (`2026/`) contienen datos personales y están excluidas de git y de la imagen Docker.
+⚠️ Los datos personales viven fuera de esta carpeta (`..\2026\`). Nunca copies PDFs ni el Excel aquí.
 ```
 
 - [ ] **Step 10: Commit**
@@ -2148,7 +2148,7 @@ git commit -m "feat(catalogos): personas, domicilios, categorias, conceptos, cue
 
 **Files:**
 - Create: `apps/catalogos/servicios.py`, `apps/catalogos/management/__init__.py` (vacío), `apps/catalogos/management/commands/__init__.py` (vacío), `apps/catalogos/management/commands/crear_hogar.py`
-- Modify: `README.md` (sección "Primer uso"), `CLAUDE.md` (estado)
+- Modify: `README.md` (sección "Primer uso"), `..\CLAUDE.md` (estado; está fuera del repo, no se commitea)
 - Test: `tests/catalogos/test_catalogos_siembra.py`
 
 **Interfaces:**
@@ -2320,7 +2320,7 @@ docker compose exec web python manage.py crear_hogar --nombre "Mi Familia" --ema
 Luego entra a http://localhost:8000/admin/ (en el plan 2 se agrega la interfaz principal).
 ~~~
 
-- [ ] **Step 7: Actualizar el estado en `CLAUDE.md`**
+- [ ] **Step 7: Actualizar el estado en `..\CLAUDE.md` (memoria, fuera del repo)**
 
 Reemplazar la sección `## Estado / siguiente paso` por:
 ```markdown
@@ -2334,6 +2334,6 @@ Reemplazar la sección `## Estado / siguiente paso` por:
 ```powershell
 docker compose run --rm web ruff format apps tests
 docker compose run --rm web ruff check .
-git add apps/catalogos README.md CLAUDE.md tests/catalogos/test_catalogos_siembra.py
+git add apps/catalogos README.md tests/catalogos/test_catalogos_siembra.py
 git commit -m "feat(catalogos): siembra de categorias y comando crear_hogar" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```

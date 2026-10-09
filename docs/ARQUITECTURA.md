@@ -260,31 +260,32 @@ flowchart LR
 
 ## 10. Estructura del repositorio (propuesta)
 
-La raíz del repositorio es la carpeta `Finanzas/` (en OneDrive, por decisión del usuario). Las carpetas de datos personales (`2026/`, años futuros) quedan **ignoradas por git**.
+La aplicación vive en `Finanzas/app_finanzas/`, que es **la raíz del repositorio git**. Los datos personales quedan fuera del repo, en carpetas hermanas, así que no pueden colarse a git ni a la imagen Docker.
 
 ```
-Finanzas\                        ← raíz del repo (OneDrive)
-├── 2026\                        ← datos personales, IGNORADO por git
-├── CLAUDE.md                    (memoria del proyecto)
-├── .gitignore
-├── .github/workflows/ci.yml
-├── docker/
-│   ├── Dockerfile
-│   └── entrypoint.sh            (migrate + collectstatic)
-├── docker-compose.yml
-├── docker-compose.override.yml  (desarrollo)
-├── .env.example                 (.env real NO va a git)
-├── pyproject.toml / uv.lock
-├── docs/                        (ARQUITECTURA.md, DEF.md, modelo-datos.dbml, specs/)
-├── scripts/                     (backup.ps1, restore.ps1, deploy.ps1)
-├── finanzas/                    (settings, urls)
-├── apps/
-│   ├── core/  catalogos/  movimientos/  presupuesto/
-│   ├── planeacion/  tablero/  importacion/
-│   └── calculos/                (Python puro)
-├── templates/  static/
-└── tests/
-    └── fixtures/                (textos SINTÉTICOS; nunca PDFs reales)
+Finanzas\                        (OneDrive)
+├── 2026\                        ← datos personales (FUERA del repo)
+├── CLAUDE.md                    ← memoria del proyecto (fuera de git)
+└── app_finanzas\                ← raíz del repo git
+    ├── .gitignore  .gitattributes  .dockerignore
+    ├── .github/workflows/ci.yml
+    ├── docker/
+    │   ├── Dockerfile
+    │   └── entrypoint.sh            (migrate)
+    ├── docker-compose.yml
+    ├── docker-compose.override.yml  (desarrollo)
+    ├── .env.example                 (.env real NO va a git)
+    ├── pyproject.toml / uv.lock
+    ├── docs/                        (ARQUITECTURA.md, DEF.md, modelo-datos.dbml, superpowers/plans/)
+    ├── scripts/                     (backup.ps1, restore.ps1, deploy.ps1)
+    ├── finanzas/                    (settings, urls)
+    ├── apps/
+    │   ├── core/  catalogos/  movimientos/  presupuesto/
+    │   ├── planeacion/  tablero/  importacion/
+    │   └── calculos/                (Python puro)
+    ├── templates/  static/
+    └── tests/
+        └── fixtures/                (textos SINTÉTICOS; nunca PDFs reales)
 ```
 
 ## 11. Seguridad y privacidad
@@ -319,4 +320,4 @@ Finanzas\                        ← raíz del repo (OneDrive)
 | ADR-05 | IA para extracción con revisión obligatoria | Parsers por banco; carga automática sin revisión | Funciona con cualquier formato; el usuario conserva el control. |
 | ADR-06 | Enviar texto, no el PDF | Bloque `document` PDF | Menos datos expuestos y menos tokens; los PDFs tienen texto. |
 | ADR-07 | Ejecución local + Tailscale | VPS / PaaS | Decisión del usuario: costo cero y datos en casa. |
-| ADR-08 | Repo dentro de `Finanzas/` (OneDrive), con mitigaciones | Repo fuera de OneDrive | Decisión del usuario: todo el proyecto en un solo lugar. Mitigaciones: (1) Postgres y media en **volúmenes Docker con nombre**, nunca en carpetas sincronizadas; (2) el entorno virtual de Python vive dentro del contenedor o fuera de OneDrive (`UV_PROJECT_ENVIRONMENT`), no en `.venv/` del repo; (3) GitHub es la copia de referencia del código: hacer push con frecuencia; (4) si aparece un conflicto de OneDrive en `.git`, se recupera con un clon nuevo. |
+| ADR-08 | Repo en `Finanzas/app_finanzas/` (OneDrive), separado de los datos personales, con mitigaciones | Repo fuera de OneDrive; repo en la raíz `Finanzas/` | Decisión del usuario: la app en su propia carpeta para no mezclar archivos; los datos personales quedan fuera del repo por construcción. Mitigaciones: (1) Postgres y media en **volúmenes Docker con nombre**, nunca en carpetas sincronizadas; (2) el entorno virtual de Python vive dentro del contenedor o fuera de OneDrive (`UV_PROJECT_ENVIRONMENT`), no en `.venv/` del repo; (3) GitHub es la copia de referencia del código: hacer push con frecuencia; (4) si aparece un conflicto de OneDrive en `.git`, se recupera con un clon nuevo. |
