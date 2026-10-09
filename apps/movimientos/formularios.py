@@ -2,7 +2,9 @@ from django import forms
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.catalogos.models import Categoria, Cuenta, Domicilio, Persona
 from apps.core.formularios import FormularioDeHogar
+from apps.movimientos.consultas import Filtros
 from apps.movimientos.models import INGRESOS_EXTRAORDINARIOS, TIPOS_DEUDA, MetodoPago, Movimiento
 
 
@@ -128,3 +130,28 @@ FORMULARIOS = {
         FormularioPagoDeuda,
     )
 }
+
+
+class FormularioFiltros(forms.Form):
+    texto = forms.CharField(label="Buscar", required=False)
+    tipo = forms.ChoiceField(choices=[("", "Todos"), *Movimiento.Tipo.choices], required=False)
+    categoria = forms.ModelChoiceField(Categoria.objects.none(), required=False, label="Categoría")
+    persona = forms.ModelChoiceField(Persona.objects.none(), required=False)
+    domicilio = forms.ModelChoiceField(Domicilio.objects.none(), required=False)
+    cuenta = forms.ModelChoiceField(Cuenta.objects.none(), required=False)
+    metodo_pago = forms.ChoiceField(
+        choices=[("", "Todos"), *MetodoPago.choices], required=False, label="Método de pago"
+    )
+
+    def __init__(self, *args, hogar, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nombre, modelo in [("categoria", Categoria), ("persona", Persona),
+                               ("domicilio", Domicilio), ("cuenta", Cuenta)]:  # fmt: skip
+            self.fields[nombre].queryset = modelo.objects.del_hogar(hogar)
+
+    def filtros(self):
+        """Filtros válidos; los inválidos (p. ej. ids de otro hogar) se ignoran."""
+        if not self.is_bound:
+            return Filtros()
+        self.is_valid()
+        return Filtros(**self.cleaned_data)
