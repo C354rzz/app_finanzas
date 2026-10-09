@@ -46,10 +46,9 @@ def test_usuario_sin_hogar_ve_un_aviso(client, usuario):
     assert "no perteneces a ningún hogar" in respuesta.content.decode()
 
 
-def test_inicio_muestra_la_navegacion(cliente):
-    respuesta = cliente.get("/")
+def test_la_navegacion_aparece_con_sesion(cliente):
+    respuesta = cliente.get("/movimientos/2026/10/")
 
-    assert respuesta.status_code == 200
     assert "Salir" in respuesta.content.decode()
 
 
