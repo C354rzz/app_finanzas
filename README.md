@@ -9,6 +9,7 @@ Documentación: `docs/ARQUITECTURA.md`, `docs/DEF.md`, `docs/modelo-datos.dbml`.
 |---|---|
 | Primera vez | `Copy-Item .env.example .env` y `docker compose build` |
 | Levantar | `docker compose up -d` → http://localhost:8000 |
+| Recompilar estilos (cambié clases en plantillas) | `docker compose run --rm css` |
 | Pruebas | `docker compose run --rm web pytest` |
 | Lint | `docker compose run --rm web ruff check .` |
 | Formato | `docker compose run --rm web ruff format .` |

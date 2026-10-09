@@ -5,3 +5,11 @@ services:
       DJANGO_DEBUG: "1"
     volumes:
       - .:/app
+
+  css:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: css
+    volumes:
+      - .:/app
