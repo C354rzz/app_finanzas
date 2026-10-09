@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: finanzas
+          POSTGRES_USER: finanzas
+          POSTGRES_PASSWORD: finanzas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finanzas -d finanzas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas
+      DJANGO_SECRET_KEY: ci-no-secreto
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen --all-groups
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest --cov=apps --cov-report=term-missing
+
+  imagen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/Dockerfile -t finanzas:ci .

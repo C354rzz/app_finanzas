@@ -29,3 +29,11 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-q --import-mode=importlib"
 filterwarnings = ["ignore:No directory at:UserWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["**/migrations/*", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "DJ", "SIM"]
