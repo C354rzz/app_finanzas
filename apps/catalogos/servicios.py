@@ -1,4 +1,9 @@
-from apps.catalogos.models import Categoria
+from dataclasses import dataclass
+from decimal import Decimal
+
+from apps.calculos.comun import CERO
+from apps.calculos.deudas import TarjetaCredito, nivel_de_uso, uso_de_credito
+from apps.catalogos.models import Categoria, Cuenta, TasaMercado
 
 # Las 12 categorías del Excel "Financial Planner template", en su orden original.
 CATEGORIAS_INICIALES = [
@@ -26,3 +31,43 @@ def sembrar_catalogos(hogar):
         )
         creadas += nueva
     return creadas
+
+
+@dataclass(frozen=True)
+class ResumenDeudas:
+    total_tarjetas: Decimal
+    total_creditos: Decimal
+    mensualidades: Decimal
+    uso: Decimal | None
+    nivel: str | None
+    tarjetas_con_intereses: list
+
+
+def resumir_deudas(hogar):
+    """RF-DEU-03, RN-08 y RN-09 con las cuentas activas del hogar."""
+    cuentas = Cuenta.objects.del_hogar(hogar).filter(activo=True)
+    tarjetas = list(cuentas.filter(tipo=Cuenta.Tipo.CREDITO))
+    creditos = list(cuentas.filter(tipo=Cuenta.Tipo.PRESTAMO))
+    uso = uso_de_credito(
+        TarjetaCredito(saldo=t.saldo_actual, linea=t.linea_credito or CERO) for t in tarjetas
+    )
+    return ResumenDeudas(
+        total_tarjetas=sum((max(CERO, t.saldo_actual) for t in tarjetas), CERO),
+        total_creditos=sum((max(CERO, c.saldo_actual) for c in creditos), CERO),
+        mensualidades=sum((c.mensualidad or CERO for c in creditos), CERO),
+        uso=uso,
+        nivel=None if uso is None else nivel_de_uso(uso),
+        tarjetas_con_intereses=[t.nombre for t in tarjetas if t.paga_total_mensual is False],
+    )
+
+
+def tasa_sugerida(cuenta):
+    """RF-CAT-04: tasa capturada o, en tarjetas sin tasa, el promedio del mercado."""
+    if cuenta.tasa_anual is not None:
+        return cuenta.tasa_anual
+    if cuenta.tipo != Cuenta.Tipo.CREDITO or not cuenta.institucion:
+        return None
+    tasa = TasaMercado.objects.filter(
+        institucion__iexact=cuenta.institucion, producto__iexact=cuenta.producto
+    ).first()
+    return tasa.tasa_promedio if tasa else None

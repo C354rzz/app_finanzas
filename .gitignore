@@ -24,6 +24,7 @@ venv/
 .coverage
 htmlcov/
 staticfiles/
+static/css/app.css
 node_modules/
 
 # --- Sistema / editores ---

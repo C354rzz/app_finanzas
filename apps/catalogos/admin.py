@@ -26,6 +26,18 @@ class ConceptoAdmin(admin.ModelAdmin):
     list_display = ("nombre", "categoria", "domicilio", "persona", "es_fijo", "es_hormiga")
     list_filter = ("hogar", "categoria", "domicilio", "es_fijo", "es_hormiga")
     search_fields = ("nombre",)
+    fieldsets = (
+        (None, {"fields": ("hogar", "categoria", "nombre", "es_fijo", "es_hormiga", "activo")}),
+        (
+            "Valores sugeridos (opcional)",
+            {
+                "description": (
+                    "Se precargan al registrar un movimiento; puedes cambiarlos en cada gasto."
+                ),
+                "fields": ("persona", "cuenta", "domicilio"),
+            },
+        ),
+    )
 
 
 @admin.register(Cuenta)

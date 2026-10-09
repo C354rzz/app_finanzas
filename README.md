@@ -9,6 +9,7 @@ Documentación: `docs/ARQUITECTURA.md`, `docs/DEF.md`, `docs/modelo-datos.dbml`.
 |---|---|
 | Primera vez | `Copy-Item .env.example .env` y `docker compose build` |
 | Levantar | `docker compose up -d` → http://localhost:8000 |
+| Recompilar estilos (cambié clases en plantillas) | `docker compose run --rm css` |
 | Pruebas | `docker compose run --rm web pytest` |
 | Lint | `docker compose run --rm web ruff check .` |
 | Formato | `docker compose run --rm web ruff format .` |
@@ -27,4 +28,12 @@ docker compose exec web python manage.py createsuperuser --email tu@email.com
 docker compose exec web python manage.py crear_hogar --nombre "Mi Familia" --email tu@email.com
 ```
 
-Luego entra a http://localhost:8000/admin/ (en el plan 2 se agrega la interfaz principal).
+Luego entra a http://localhost:8000 con tu email y contraseña:
+
+- **Inicio**: tablero del mes (ingresos y gastos reales contra el presupuesto, categorías, deudas y alertas).
+- **+**: registra un gasto, ingreso (aguinaldo, PTU…), transferencia o pago de deuda.
+- **Movimientos**: lista del mes con filtros, totales y exportación a CSV.
+- **Presupuesto**: plantilla base y ajustes de cada mes.
+- **Más**: personas, domicilios, categorías, conceptos y cuentas.
+
+Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).

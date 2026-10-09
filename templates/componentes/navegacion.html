@@ -1,0 +1,10 @@
+<nav class="fixed inset-x-0 bottom-0 z-10 flex items-center justify-around border-t border-slate-200 bg-white py-2 text-xs md:inset-y-0 md:left-0 md:right-auto md:w-56 md:flex-col md:items-stretch md:justify-start md:gap-1 md:border-r md:border-t-0 md:p-4 md:text-sm">
+  <span class="hidden px-2 pb-4 text-lg font-semibold md:block">💰 Finanzas</span>
+  <a href="{% url 'inicio' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>🏠</span><span>Inicio</span></a>
+  <a href="{% url 'movimientos:inicio' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>📒</span><span>Movimientos</span></a>
+  <button type="button" hx-get="{% url 'movimientos:capturar' 'gasto' %}" hx-target="#modal-contenido" aria-label="Registrar movimiento"
+          class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow md:h-auto md:w-full md:justify-start md:gap-2 md:rounded-lg md:px-2 md:py-1 md:text-base">+<span class="hidden md:inline">Registrar</span></button>
+  <a href="{% url 'presupuesto:inicio' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>🧮</span><span>Presupuesto</span></a>
+  <a href="{% url 'catalogos:indice' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>☰</span><span>Más</span></a>
+  <form method="post" action="{% url 'logout' %}" class="hidden md:mt-auto md:block">{% csrf_token %}<button class="w-full rounded-lg px-2 py-1 text-left text-slate-500 hover:bg-slate-100">↩ Salir</button></form>
+</nav>

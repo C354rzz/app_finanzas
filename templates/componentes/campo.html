@@ -1,0 +1,9 @@
+<div class="space-y-1">
+  {% if campo.widget_type == "checkbox" %}
+    <label class="flex items-center gap-2">{{ campo }} {{ campo.label }}</label>
+  {% else %}
+    {{ campo.label_tag }}{{ campo }}
+  {% endif %}
+  {% if campo.help_text %}<p class="text-xs text-slate-500">{{ campo.help_text }}</p>{% endif %}
+  {% for error in campo.errors %}<p class="text-sm text-red-600">{{ error }}</p>{% endfor %}
+</div>

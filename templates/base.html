@@ -1,0 +1,21 @@
+{% load static %}<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Inicio{% endblock %} · Finanzas</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% if user.is_authenticated and request.hogar %}{% include "componentes/navegacion.html" %}{% endif %}
+  <main class="mx-auto max-w-5xl px-4 pb-24 pt-4 md:pb-8 md:pl-60">
+    {% include "componentes/mensajes.html" %}
+    {% block contenido %}{% endblock %}
+  </main>
+  <dialog id="modal" class="m-auto w-full max-w-md rounded-xl p-0 backdrop:bg-slate-900/50">
+    <div id="modal-contenido"></div>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{% load formato %}
+<section class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Ingresos</p>
+    <p class="font-semibold">{{ resumen.ingresos_totales|dinero }}</p>
+    <p class="text-xs text-slate-500">fijos {{ resumen.ingresos_fijos|dinero }} · variables {{ resumen.ingresos_variables|dinero }}</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Gastos</p>
+    <p class="font-semibold">{{ resumen.gastos_totales|dinero }}</p>
+    <p class="text-xs text-slate-500">fijos {{ resumen.gastos_fijos|dinero }} · variables {{ resumen.gastos_variables|dinero }}</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Disponible</p>
+    <p class="font-semibold">{{ resumen.disponible|dinero }}</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Meta de ahorro</p>
+    <p class="font-semibold">{{ resumen.meta_ahorro|dinero }}</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Presupuesto hormiga 🐜</p>
+    <p class="font-semibold">{{ resumen.presupuesto_hormiga|dinero }}</p>
+    <p class="text-xs text-slate-500">máximo {{ resumen.maximo_diario_hormiga|dinero }} al día</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Gasto con tarjeta</p>
+    <p class="font-semibold">{{ resumen.gasto_con_tarjeta|dinero }}</p>
+  </div>
+  <div class="tarjeta col-span-2">
+    <p class="text-xs text-slate-500">Recorte necesario para la meta</p>
+    <p class="font-semibold">{% if resumen.recorte_necesario is None %}N/A{% else %}{{ resumen.recorte_necesario|dinero }}{% endif %}</p>
+    <p class="text-xs text-slate-600">{{ mensajes.recorte }}</p>
+  </div>
+</section>
+<p class="mb-4 rounded-lg px-3 py-2 text-sm {% if mensajes.disponible.0 == 'bien' %}bg-emerald-50 text-emerald-800{% elif mensajes.disponible.0 == 'cuidado' %}bg-amber-50 text-amber-800{% else %}bg-red-50 text-red-700{% endif %}">{{ mensajes.disponible.1 }}</p>

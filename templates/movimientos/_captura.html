@@ -1,0 +1,25 @@
+<div class="p-4">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="text-lg font-semibold">{{ titulo }}</h2>
+    <button type="button" class="px-2 text-slate-500" data-cerrar-modal aria-label="Cerrar">✕</button>
+  </div>
+  {% if tipos %}
+    <nav class="mb-4 grid grid-cols-2 gap-1 text-center text-sm sm:grid-cols-4">
+      {% for valor, etiqueta in tipos %}
+        <a href="{% url 'movimientos:capturar' valor %}" hx-get="{% url 'movimientos:capturar' valor %}" hx-target="#modal-contenido"
+           class="rounded-lg px-2 py-1 {% if valor == tipo %}bg-emerald-600 text-white{% else %}bg-slate-100{% endif %}">{{ etiqueta }}</a>
+      {% endfor %}
+    </nav>
+  {% endif %}
+  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" hx-disabled-elt="find button[type=submit]" class="space-y-3">
+    {% csrf_token %}
+    {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ formulario.non_field_errors }}</div>{% endif %}
+    {% for campo in formulario.principales %}{% include "componentes/campo.html" %}{% endfor %}
+    {% if formulario.campos_sugeridos %}
+      <fieldset id="campos-sugeridos" class="space-y-3 rounded-lg border border-slate-200 p-3">
+        {% include "movimientos/_campos_sugeridos.html" %}
+      </fieldset>
+    {% endif %}
+    <button type="submit" class="boton w-full">Guardar</button>
+  </form>
+</div>

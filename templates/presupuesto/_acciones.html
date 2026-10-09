@@ -1,0 +1,2 @@
+<button type="button" class="text-sky-700" hx-get="{% url 'presupuesto:editar_renglon' ambito clase renglon.pk %}" hx-target="#modal-contenido">Editar</button>
+<button type="button" class="ml-2 text-red-600" hx-post="{% url 'presupuesto:eliminar_renglon' ambito clase renglon.pk %}" hx-confirm="¿Quitar este renglón?">Quitar</button>

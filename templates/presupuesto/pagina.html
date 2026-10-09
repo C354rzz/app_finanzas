@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Presupuesto · {{ titulo }}{% endblock %}
+{% block contenido %}
+<nav class="mb-4 flex gap-2 text-sm">
+  <a href="{% url 'presupuesto:plantilla' %}" class="rounded-lg px-3 py-1 {% if ambito == 'plantilla' %}bg-emerald-600 text-white{% else %}bg-white{% endif %}">Plantilla</a>
+  <a href="{% url 'presupuesto:inicio' %}" class="rounded-lg px-3 py-1 {% if ambito == 'mes' %}bg-emerald-600 text-white{% else %}bg-white{% endif %}">Mes</a>
+</nav>
+<header class="mb-4 flex items-center justify-between gap-2">
+  {% if ambito == "mes" %}<a class="boton-secundario" href="{% url 'presupuesto:mes' anterior.0 anterior.1 %}" aria-label="Mes anterior">‹</a>{% endif %}
+  <h1 class="text-lg font-semibold">{{ titulo }}</h1>
+  {% if ambito == "mes" %}<a class="boton-secundario" href="{% url 'presupuesto:mes' siguiente.0 siguiente.1 %}" aria-label="Mes siguiente">›</a>{% endif %}
+</header>
+
+{% include "presupuesto/_resumen.html" %}
+
+<form method="post" action="{{ urls.porcentaje }}" class="tarjeta mb-4 flex flex-wrap items-end gap-3">
+  {% csrf_token %}
+  <div class="w-36">{% include "componentes/campo.html" with campo=formulario_porcentaje.porcentaje %}</div>
+  <datalist id="sugerencias-ahorro"><option value="5"></option><option value="10"></option><option value="15"></option><option value="20"></option><option value="25"></option></datalist>
+  <button class="boton">Guardar %</button>
+  <p class="basis-full text-sm text-slate-600">{{ mensajes.ahorro }}</p>
+</form>
+
+{% if ambito == "mes" %}
+  <form method="post" action="{{ urls.resincronizar }}" class="mb-4 text-right" onsubmit="return confirm('¿Reemplazar el presupuesto de este mes por la plantilla?')">
+    {% csrf_token %}<button class="text-sm text-sky-700">Re-sincronizar con la plantilla</button>
+  </form>
+{% endif %}
+
+<section class="tarjeta mb-4">
+  <div class="mb-2 flex items-center justify-between">
+    <h2 class="font-medium">Ingresos</h2>
+    <button type="button" class="boton-secundario text-sm" hx-get="{{ urls.nuevo_ingreso }}" hx-target="#modal-contenido">+ Ingreso</button>
+  </div>
+  <table class="w-full text-sm">
+    {% for renglon in ingresos %}
+      <tr class="border-t border-slate-100">
+        <td class="py-1">{{ renglon.nombre }} <span class="text-xs text-slate-500">· {{ renglon.get_tipo_ingreso_display }}{% if not renglon.es_fijo %} · variable{% endif %}{% if renglon.persona %} · {{ renglon.persona }}{% endif %}</span></td>
+        <td class="py-1 text-right">{{ renglon.monto|dinero }}</td>
+        <td class="py-1 text-right text-xs">{% include "presupuesto/_acciones.html" with clase="ingreso" %}</td>
+      </tr>
+    {% empty %}
+      <tr><td class="text-slate-500">Sin ingresos</td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<section class="tarjeta">
+  <div class="mb-2 flex items-center justify-between">
+    <h2 class="font-medium">Gastos</h2>
+    <button type="button" class="boton-secundario text-sm" hx-get="{{ urls.nuevo_gasto }}" hx-target="#modal-contenido">+ Gasto</button>
+  </div>
+  {% regroup gastos by concepto.categoria as grupos %}
+  {% for grupo in grupos %}
+    <h3 class="mt-3 text-sm font-semibold">{{ grupo.grouper }}</h3>
+    <table class="w-full text-sm">
+      {% for renglon in grupo.list %}
+        <tr class="border-t border-slate-100">
+          <td class="py-1">{{ renglon.concepto.nombre }}{% if renglon.concepto.domicilio %} <span class="text-xs text-slate-500">({{ renglon.concepto.domicilio }})</span>{% endif %}<span class="text-xs text-slate-500">{% if renglon.es_fijo %} · fijo{% endif %}{% if renglon.con_tarjeta %} · 💳{% endif %}{% if renglon.es_hormiga %} · 🐜{% endif %}{% if renglon.periodicidad == "anual" %} · anual {{ renglon.monto|dinero }}{% endif %}</span></td>
+          <td class="py-1 text-right">{{ renglon.monto_mensual|dinero }}</td>
+          <td class="py-1 text-right text-xs">{% include "presupuesto/_acciones.html" with clase="gasto" %}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  {% empty %}
+    <p class="text-sm text-slate-500">Sin gastos presupuestados.</p>
+  {% endfor %}
+</section>
+{% endblock %}
