@@ -1,0 +1,442 @@
+// =====================================================================
+// Modelo de base de datos — App de Finanzas Familiares (v1)
+// Formato: DBML. Visualízalo pegándolo en https://dbdiagram.io
+// Motor: PostgreSQL 17 · ORM: Django 5.2 LTS
+// Versión: 0.1 (2026-10-09) · Estado: borrador para revisión
+//
+// Convenciones:
+//  - Dinero: numeric(12,2) en MXN (moneda definida por hogar). Nunca float.
+//  - Tasas: numeric(7,4) como fracción (0.2500 = 25%).
+//  - Toda tabla de negocio tiene hogar_id (multi-tenant). Toda consulta
+//    filtra por el hogar del usuario autenticado.
+//  - creado_en / actualizado_en (timestamptz) en todas las tablas; se omiten
+//    abajo por brevedad salvo donde aportan significado.
+//  - Enums se implementan como TextChoices de Django (varchar + CHECK).
+// =====================================================================
+
+Project finanzas_familiares {
+  database_type: 'PostgreSQL'
+  Note: 'App web (Django + HTMX) que reemplaza el Excel "Financial Planner template". Multi-hogar desde v1; en v1 hay un solo hogar y un solo usuario.'
+}
+
+// ---------------------------------------------------------------------
+// 1. Tenencia y acceso
+// ---------------------------------------------------------------------
+
+Table hogar {
+  id bigserial [pk]
+  nombre varchar(120) [not null]
+  moneda char(3) [not null, default: 'MXN']
+  zona_horaria varchar(64) [not null, default: 'America/Monterrey']
+  creado_en timestamptz [not null]
+  Note: 'Tenant. Todo dato de negocio pertenece a un hogar.'
+}
+
+Table usuario {
+  id bigserial [pk]
+  email varchar(254) [not null, unique]
+  nombre varchar(120)
+  password varchar(128) [not null, note: 'Hash de Django']
+  is_active boolean [not null, default: true]
+  is_staff boolean [not null, default: false]
+  Note: 'Usuario personalizado de Django (AUTH_USER_MODEL), login por email.'
+}
+
+Table membresia {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  usuario_id bigint [not null, ref: > usuario.id]
+  rol rol_membresia [not null, default: 'admin']
+  indexes { (hogar_id, usuario_id) [unique] }
+  Note: 'v1: un usuario admin. v3: varios usuarios con roles.'
+}
+
+Enum rol_membresia {
+  admin
+  editor
+  lector
+}
+
+// ---------------------------------------------------------------------
+// 2. Dimensiones (catálogos editables por hogar)
+// ---------------------------------------------------------------------
+
+Table persona {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  nombre varchar(80) [not null, note: 'Ej. Julio, Monze, Fidel']
+  parentesco varchar(40) [note: 'Ej. titular, hijo(a), padre, otro']
+  activo boolean [not null, default: true]
+  indexes { (hogar_id, nombre) [unique] }
+  Note: 'Persona a quien se atribuye un gasto/ingreso. No necesita login.'
+}
+
+Table domicilio {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  alias varchar(80) [not null, note: 'Ej. Casa Cedro, Casa Fidel']
+  direccion varchar(255)
+  activo boolean [not null, default: true]
+  indexes { (hogar_id, alias) [unique] }
+}
+
+Table categoria {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  nombre varchar(60) [not null, note: 'Casa, Comida, Familia, Transporte, Viajes, Deudas, Salud, Suscripciones, Gastos anuales, Cuidado personal, Entretenimiento, Otros']
+  icono varchar(8) [note: 'Emoji, ej. 🏡']
+  orden smallint [not null, default: 0]
+  activo boolean [not null, default: true]
+  indexes { (hogar_id, nombre) [unique] }
+  Note: 'Se siembran las 12 categorías del Excel al crear el hogar.'
+}
+
+Table concepto {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  categoria_id bigint [not null, ref: > categoria.id]
+  nombre varchar(80) [not null, note: 'Ej. Luz, Costco, Netflix']
+  es_fijo boolean [not null, default: false]
+  es_hormiga boolean [not null, default: false]
+  persona_id bigint [ref: > persona.id, note: 'Valor por defecto al capturar']
+  domicilio_id bigint [ref: > domicilio.id, note: 'Valor por defecto al capturar']
+  cuenta_id bigint [ref: > cuenta.id, note: 'Valor por defecto al capturar']
+  activo boolean [not null, default: true]
+  indexes { (categoria_id, nombre, domicilio_id) [unique] }
+  Note: 'Subconcepto de una categoría (las filas del Excel). Ej. "Luz" en Casa Cedro y "Luz" en Casa Fidel son conceptos distintos.'
+}
+
+Table cuenta {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  nombre varchar(80) [not null, note: 'Ej. Hey Crédito, BanCoppel Nómina, Efectivo']
+  tipo tipo_cuenta [not null]
+  institucion varchar(80) [note: 'Banco o emisor: Hey Banco, Stori, Klar, Coppel...']
+  producto varchar(80) [note: 'Ej. Stori Clásica']
+  titular_id bigint [ref: > persona.id]
+  ultimos_digitos char(4)
+  // Tarjetas de crédito
+  linea_credito numeric(12,2)
+  tasa_anual numeric(7,4) [note: 'Si es null en tarjetas, se usa la tasa promedio del catálogo']
+  paga_total_mensual boolean [note: '¿Paga para no generar intereses?']
+  dia_corte smallint
+  dia_pago smallint
+  // Créditos / préstamos
+  monto_inicial numeric(12,2)
+  mensualidad numeric(12,2)
+  // Saldo
+  saldo_actual numeric(12,2) [not null, default: 0, note: 'Positivo = lo que tienes (débito/efectivo) o lo que debes (crédito/préstamo)']
+  fecha_saldo date
+  activo boolean [not null, default: true]
+  indexes { (hogar_id, nombre) [unique] }
+  Note: 'Unifica "Tarjetas de Crédito" y "Créditos" del Excel, más cuentas de débito y efectivo.'
+}
+
+Enum tipo_cuenta {
+  efectivo
+  debito
+  credito [note: 'Tarjeta de crédito']
+  prestamo [note: 'Crédito personal, Kueski, RAC, cuenta corriente, hipoteca, auto']
+  ahorro
+  inversion
+}
+
+Table tasa_mercado {
+  id bigserial [pk]
+  institucion varchar(80) [not null]
+  producto varchar(80) [not null]
+  tasa_promedio numeric(7,4) [not null]
+  fecha_referencia date
+  indexes { (institucion, producto) [unique] }
+  Note: 'Catálogo global (sin hogar) importado de la hoja oculta "No borrar" del Excel.'
+}
+
+// ---------------------------------------------------------------------
+// 3. Movimientos (reemplaza las hojas 01–12)
+// ---------------------------------------------------------------------
+
+Table movimiento {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  fecha date [not null]
+  tipo tipo_movimiento [not null]
+  monto numeric(12,2) [not null, note: 'Siempre positivo; el tipo define el signo']
+  descripcion varchar(255) [not null]
+  categoria_id bigint [ref: > categoria.id, note: 'Requerido si tipo = gasto']
+  concepto_id bigint [ref: > concepto.id]
+  tipo_ingreso tipo_ingreso [note: 'Requerido si tipo = ingreso']
+  es_extraordinario boolean [not null, default: false, note: 'Ingresos: aguinaldo, PTU, bonos... no cuentan en el promedio mensual']
+  metodo_pago metodo_pago [not null]
+  cuenta_id bigint [ref: > cuenta.id, note: 'Cuenta de origen (gasto/transferencia/pago) o destino (ingreso)']
+  cuenta_destino_id bigint [ref: > cuenta.id, note: 'Solo transferencia y pago_deuda']
+  persona_id bigint [ref: > persona.id]
+  domicilio_id bigint [ref: > domicilio.id]
+  es_hormiga boolean [not null, default: false]
+  notas text
+  origen origen_movimiento [not null, default: 'manual']
+  documento_id bigint [ref: > documento.id, note: 'Si origen = importado']
+  creado_por_id bigint [ref: > usuario.id]
+  creado_en timestamptz [not null]
+  actualizado_en timestamptz [not null]
+  indexes {
+    (hogar_id, fecha)
+    (hogar_id, categoria_id, fecha)
+    (hogar_id, cuenta_id, fecha)
+    (hogar_id, persona_id)
+    (hogar_id, domicilio_id)
+  }
+}
+
+Enum tipo_movimiento {
+  gasto
+  ingreso
+  transferencia [note: 'Entre cuentas propias; no es gasto ni ingreso']
+  pago_deuda [note: 'Pago a tarjeta o préstamo; reduce la deuda']
+}
+
+Enum tipo_ingreso {
+  salario
+  aguinaldo
+  ptu [note: 'Utilidades']
+  bono
+  beca
+  prestamo_recibido
+  reembolso
+  venta
+  otro
+}
+
+Enum metodo_pago {
+  efectivo
+  transferencia
+  tarjeta_debito
+  tarjeta_credito
+  domiciliacion
+}
+
+Enum origen_movimiento {
+  manual
+  importado
+}
+
+// ---------------------------------------------------------------------
+// 4. Presupuesto
+// ---------------------------------------------------------------------
+
+Table plantilla_presupuesto {
+  id bigserial [pk]
+  hogar_id bigint [not null, unique, ref: - hogar.id]
+  porcentaje_ahorro numeric(5,4) [not null, default: 0.05, note: '0.05 a 0.25 en el Excel; aquí libre de 0 a 1']
+  Note: 'Una plantilla por hogar. Base para generar cada mes.'
+}
+
+Table plantilla_ingreso {
+  id bigserial [pk]
+  plantilla_id bigint [not null, ref: > plantilla_presupuesto.id]
+  nombre varchar(80) [not null, note: 'Ej. Salario mensual (neto)']
+  tipo_ingreso tipo_ingreso [not null]
+  es_fijo boolean [not null, default: true]
+  monto numeric(12,2) [not null]
+  persona_id bigint [ref: > persona.id]
+}
+
+Table plantilla_gasto {
+  id bigserial [pk]
+  plantilla_id bigint [not null, ref: > plantilla_presupuesto.id]
+  concepto_id bigint [not null, ref: > concepto.id]
+  monto numeric(12,2) [not null]
+  periodicidad periodicidad [not null, default: 'mensual']
+  es_fijo boolean [not null, default: false]
+  con_tarjeta boolean [not null, default: false]
+  es_hormiga boolean [not null, default: false]
+  indexes { (plantilla_id, concepto_id) [unique] }
+  Note: 'Monto mensual equivalente = monto si mensual; monto/12 si anual (regla RN-03).'
+}
+
+Enum periodicidad {
+  mensual
+  anual
+}
+
+Table presupuesto_mes {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  anio smallint [not null]
+  mes smallint [not null, note: '1–12']
+  porcentaje_ahorro numeric(5,4) [not null]
+  cerrado boolean [not null, default: false]
+  indexes { (hogar_id, anio, mes) [unique] }
+  Note: 'Se crea copiando la plantilla la primera vez que se abre el mes. Editable sin afectar otros meses.'
+}
+
+Table presupuesto_mes_ingreso {
+  id bigserial [pk]
+  presupuesto_mes_id bigint [not null, ref: > presupuesto_mes.id]
+  nombre varchar(80) [not null]
+  tipo_ingreso tipo_ingreso [not null]
+  es_fijo boolean [not null]
+  monto numeric(12,2) [not null]
+  persona_id bigint [ref: > persona.id]
+}
+
+Table presupuesto_mes_gasto {
+  id bigserial [pk]
+  presupuesto_mes_id bigint [not null, ref: > presupuesto_mes.id]
+  concepto_id bigint [not null, ref: > concepto.id]
+  monto_mensual numeric(12,2) [not null, note: 'Ya prorrateado si era anual']
+  es_fijo boolean [not null]
+  con_tarjeta boolean [not null]
+  es_hormiga boolean [not null]
+  indexes { (presupuesto_mes_id, concepto_id) [unique] }
+}
+
+// ---------------------------------------------------------------------
+// 5. Planeación: metas, patrimonio, simulador
+// ---------------------------------------------------------------------
+
+Table meta_ahorro {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  tipo tipo_meta [not null]
+  nombre varchar(80) [not null]
+  ahorro_actual numeric(12,2) [not null, default: 0]
+  meses smallint [not null, default: 12]
+  tasa_anual numeric(7,4) [not null, default: 0.10]
+  monto_objetivo numeric(12,2) [not null]
+  fecha_inicio date [not null]
+  cuenta_id bigint [ref: > cuenta.id, note: 'Cuenta donde se guarda el ahorro (opcional)']
+  activa boolean [not null, default: true]
+  Note: 'Aporte mensual necesario se calcula (RN-05), no se almacena.'
+}
+
+Enum tipo_meta {
+  auto
+  casa
+  compra_importante
+  educacion
+  fondo_emergencia
+  regalo
+  remodelacion
+  vacaciones
+  otro
+}
+
+Table activo {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  tipo tipo_activo [not null]
+  nombre varchar(120) [not null, note: 'Ej. Kia Rio 2018']
+  valor_actual numeric(14,2) [not null]
+  fecha_valuacion date [not null]
+  domicilio_id bigint [ref: > domicilio.id, note: 'Si el activo es un inmueble']
+  cuenta_id bigint [ref: > cuenta.id, note: 'Si el valor viene de una cuenta (ahorro/inversión/afore)']
+  activo boolean [not null, default: true]
+}
+
+Enum tipo_activo {
+  acciones
+  auto
+  inmueble
+  cuenta_ahorro
+  cuenta_inversion
+  afore
+  stock_options
+  terreno
+  otro
+}
+
+Table simulacion_credito {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  nombre varchar(80) [not null]
+  monto numeric(12,2) [not null]
+  tasa_anual numeric(7,4) [not null]
+  meses smallint [not null]
+  comision_apertura numeric(7,4) [not null, default: 0]
+  pagos_anticipados jsonb [not null, default: '{}', note: '{"<mes>": monto}']
+  Note: 'Solo se guarda si el usuario lo pide; la tabla de amortización se calcula (RN-07).'
+}
+
+// ---------------------------------------------------------------------
+// 6. Importación de documentos
+// ---------------------------------------------------------------------
+
+Table documento {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  archivo varchar(255) [not null, note: 'Ruta en almacenamiento de medios (volumen Docker)']
+  nombre_original varchar(255) [not null]
+  sha256 char(64) [not null]
+  tipo tipo_documento [note: 'Detectado o elegido por el usuario']
+  emisor varchar(80) [note: 'Ej. BanCoppel, Hey Banco, CFE, Agua y Drenaje, Totalplay']
+  cuenta_id bigint [ref: > cuenta.id, note: 'Cuenta a la que pertenece el estado de cuenta']
+  periodo_inicio date
+  periodo_fin date
+  estado estado_documento [not null, default: 'subido']
+  error text
+  modelo_ia varchar(40) [note: 'Ej. claude-opus-5-5']
+  tokens_entrada integer
+  tokens_salida integer
+  costo_estimado_usd numeric(8,4)
+  subido_por_id bigint [ref: > usuario.id]
+  creado_en timestamptz [not null]
+  indexes { (hogar_id, sha256) [unique, note: 'Evita importar el mismo archivo dos veces'] }
+}
+
+Enum tipo_documento {
+  estado_cuenta
+  nomina
+  recibo_servicio
+  otro
+}
+
+Enum estado_documento {
+  subido
+  procesando
+  por_revisar
+  confirmado
+  descartado
+  error
+}
+
+Table movimiento_propuesto {
+  id bigserial [pk]
+  documento_id bigint [not null, ref: > documento.id]
+  fecha date [not null]
+  descripcion_original varchar(255) [not null, note: 'Texto tal cual aparece en el documento']
+  monto numeric(12,2) [not null]
+  tipo tipo_movimiento [not null]
+  tipo_ingreso tipo_ingreso
+  es_extraordinario boolean [not null, default: false]
+  metodo_pago metodo_pago
+  categoria_id bigint [ref: > categoria.id]
+  concepto_id bigint [ref: > concepto.id]
+  persona_id bigint [ref: > persona.id]
+  domicilio_id bigint [ref: > domicilio.id]
+  cuenta_id bigint [ref: > cuenta.id]
+  confianza numeric(3,2) [note: '0–1, reportada por la extracción']
+  posible_duplicado_de_id bigint [ref: > movimiento.id]
+  estado estado_propuesta [not null, default: 'pendiente']
+  movimiento_id bigint [ref: - movimiento.id, note: 'Movimiento creado al aceptar']
+}
+
+Enum estado_propuesta {
+  pendiente
+  aceptado
+  descartado
+}
+
+Table regla_clasificacion {
+  id bigserial [pk]
+  hogar_id bigint [not null, ref: > hogar.id]
+  patron varchar(120) [not null, note: 'Texto que contiene la descripción (sin mayúsculas/acentos). Ej. "OXXO", "CFE 123456789012"']
+  emisor varchar(80) [note: 'Opcional: limita la regla a un emisor']
+  categoria_id bigint [ref: > categoria.id]
+  concepto_id bigint [ref: > concepto.id]
+  persona_id bigint [ref: > persona.id]
+  domicilio_id bigint [ref: > domicilio.id]
+  es_hormiga boolean
+  prioridad smallint [not null, default: 100]
+  veces_aplicada integer [not null, default: 0]
+  Note: 'Se crea al confirmar propuestas ("recordar para la próxima"). Tiene prioridad sobre la sugerencia de la IA.'
+}
