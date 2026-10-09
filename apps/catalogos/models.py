@@ -94,7 +94,7 @@ class Cuenta(ModeloDeHogar):
 
 
 class Concepto(ModeloDeHogar):
-    categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT, related_name="conceptos")
+    categoria = models.ForeignKey(Categoria, on_delete=models.RESTRICT, related_name="conceptos")
     nombre = models.CharField(max_length=80)
     es_fijo = models.BooleanField(default=False)
     es_hormiga = models.BooleanField(default=False)

@@ -112,3 +112,23 @@ def test_admin_de_catalogos_carga(client, usuario):
 
     for modelo in ["persona", "domicilio", "categoria", "concepto", "cuenta", "tasamercado"]:
         assert client.get(f"/admin/catalogos/{modelo}/").status_code == 200, modelo
+
+
+def test_borrar_hogar_con_conceptos_borra_todo(hogar):
+    casa = Categoria.objects.create(hogar=hogar, nombre="Casa")
+    Concepto.objects.create(hogar=hogar, categoria=casa, nombre="Luz")
+
+    hogar.delete()
+
+    assert not Concepto.objects.filter(nombre="Luz").exists()
+    assert not Categoria.objects.filter(pk=casa.pk).exists()
+
+
+def test_no_se_puede_borrar_una_categoria_con_conceptos(hogar):
+    from django.db.models import RestrictedError
+
+    casa = Categoria.objects.create(hogar=hogar, nombre="Casa")
+    Concepto.objects.create(hogar=hogar, categoria=casa, nombre="Luz")
+
+    with pytest.raises(RestrictedError):
+        casa.delete()
