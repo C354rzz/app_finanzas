@@ -7,8 +7,12 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DJANGO_DEBUG=(bool, False))
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", default="solo-para-desarrollo-no-usar-en-produccion")
 DEBUG = env("DJANGO_DEBUG")
+# En producción la clave es obligatoria: sin ella, las sesiones se firmarían con un valor público.
+if DEBUG:
+    SECRET_KEY = env("DJANGO_SECRET_KEY", default="solo-para-desarrollo-no-usar-en-produccion")
+else:
+    SECRET_KEY = env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
