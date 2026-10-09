@@ -6,6 +6,7 @@ from apps.core.models import ConMarcasDeTiempo, ModeloDeHogar
 DINERO = {"max_digits": 12, "decimal_places": 2}
 TASA = {"max_digits": 7, "decimal_places": 4}
 DIA_DEL_MES = [MinValueValidator(1), MaxValueValidator(31)]
+AYUDA_SUGERIDO = "Opcional. Se precarga al registrar un movimiento y puedes cambiarlo en cada uno."
 
 
 class Persona(ModeloDeHogar):
@@ -98,9 +99,33 @@ class Concepto(ModeloDeHogar):
     nombre = models.CharField(max_length=80)
     es_fijo = models.BooleanField(default=False)
     es_hormiga = models.BooleanField(default=False)
-    persona = models.ForeignKey(Persona, null=True, blank=True, on_delete=models.SET_NULL)
-    domicilio = models.ForeignKey(Domicilio, null=True, blank=True, on_delete=models.SET_NULL)
-    cuenta = models.ForeignKey(Cuenta, null=True, blank=True, on_delete=models.SET_NULL)
+    persona = models.ForeignKey(
+        Persona,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="persona por defecto",
+        help_text=AYUDA_SUGERIDO,
+    )
+    domicilio = models.ForeignKey(
+        Domicilio,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="domicilio por defecto",
+        help_text=(
+            "Opcional. Distingue el mismo concepto en varios domicilios (ej. Luz de Casa Fidel) "
+            "y se precarga al registrar un movimiento."
+        ),
+    )
+    cuenta = models.ForeignKey(
+        Cuenta,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name="cuenta por defecto",
+        help_text=AYUDA_SUGERIDO,
+    )
     activo = models.BooleanField(default=True)
 
     class Meta:
