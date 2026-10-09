@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Más{% endblock %}
+{% block contenido %}
+<h1 class="mb-4 text-lg font-semibold">Más</h1>
+<section class="tarjeta mb-4">
+  <h2 class="mb-2 font-medium">Catálogos</h2>
+  <ul class="divide-y divide-slate-100">
+    {% for nombre, datos in catalogos.items %}
+      <li><a class="block py-2 text-sky-700" href="{% url 'catalogos:lista' nombre %}">{{ datos.titulo }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+<section class="tarjeta space-y-2">
+  <a class="block text-sky-700" href="{% url 'presupuesto:plantilla' %}">Plantilla de presupuesto</a>
+  {% if user.is_staff %}<a class="block text-sky-700" href="{% url 'admin:index' %}">Administración avanzada</a>{% endif %}
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-red-600">Salir</button></form>
+</section>
+{% endblock %}

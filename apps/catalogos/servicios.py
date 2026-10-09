@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from apps.calculos.comun import CERO
 from apps.calculos.deudas import TarjetaCredito, nivel_de_uso, uso_de_credito
-from apps.catalogos.models import Categoria, Cuenta
+from apps.catalogos.models import Categoria, Cuenta, TasaMercado
 
 # Las 12 categorías del Excel "Financial Planner template", en su orden original.
 CATEGORIAS_INICIALES = [
@@ -59,3 +59,15 @@ def resumir_deudas(hogar):
         nivel=None if uso is None else nivel_de_uso(uso),
         tarjetas_con_intereses=[t.nombre for t in tarjetas if t.paga_total_mensual is False],
     )
+
+
+def tasa_sugerida(cuenta):
+    """RF-CAT-04: tasa capturada o, en tarjetas sin tasa, el promedio del mercado."""
+    if cuenta.tasa_anual is not None:
+        return cuenta.tasa_anual
+    if cuenta.tipo != Cuenta.Tipo.CREDITO or not cuenta.institucion:
+        return None
+    tasa = TasaMercado.objects.filter(
+        institucion__iexact=cuenta.institucion, producto__iexact=cuenta.producto
+    ).first()
+    return tasa.tasa_promedio if tasa else None

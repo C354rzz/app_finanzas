@@ -3,7 +3,8 @@ from decimal import Decimal as D
 import pytest
 
 from apps.calculos.comun import redondear
-from apps.catalogos.servicios import resumir_deudas
+from apps.catalogos.models import Cuenta, TasaMercado
+from apps.catalogos.servicios import resumir_deudas, tasa_sugerida
 
 pytestmark = pytest.mark.django_db
 
@@ -33,3 +34,28 @@ def test_cuentas_inactivas_no_cuentan(catalogo):
 
     assert r.total_tarjetas == 0
     assert r.tarjetas_con_intereses == []
+
+
+def test_tasa_sugerida(hogar):
+    TasaMercado.objects.create(
+        institucion="Banco Demo", producto="Clásica", tasa_promedio=D("0.45")
+    )
+    credito = Cuenta.Tipo.CREDITO
+
+    capturada = Cuenta(hogar=hogar, nombre="A", tipo=credito, tasa_anual=D("0.30"))
+    sin_tasa = Cuenta(
+        hogar=hogar, nombre="B", tipo=credito, institucion="BANCO DEMO", producto="clásica"
+    )
+    debito = Cuenta(
+        hogar=hogar,
+        nombre="C",
+        tipo=Cuenta.Tipo.DEBITO,
+        institucion="Banco Demo",
+        producto="Clásica",
+    )
+    desconocida = Cuenta(hogar=hogar, nombre="D", tipo=credito, institucion="Otro")
+
+    assert tasa_sugerida(capturada) == D("0.30")
+    assert tasa_sugerida(sin_tasa) == D("0.45")
+    assert tasa_sugerida(debito) is None
+    assert tasa_sugerida(desconocida) is None
