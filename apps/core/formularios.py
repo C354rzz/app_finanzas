@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.db.models import Q
 
@@ -49,3 +50,10 @@ class FormularioDeHogar(forms.ModelForm):
                     error.error_dict.pop(nombre)
                 )
         super().add_error(field, error)
+
+
+class FormularioEntrada(AuthenticationForm):
+    username = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(attrs={"autofocus": True, "autocomplete": "email"}),
+    )

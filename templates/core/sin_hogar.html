@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Sin hogar{% endblock %}
+{% block contenido %}
+<div class="mx-auto mt-12 max-w-md tarjeta space-y-3">
+  <h1 class="text-lg font-semibold">Todavía no perteneces a ningún hogar</h1>
+  <p class="text-sm text-slate-600">Tu cuenta existe, pero no perteneces a ningún hogar. Créalo con
+    <code>python manage.py crear_hogar --nombre "Mi Familia" --email tu@email.com</code>.</p>
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="boton-secundario">Salir</button></form>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block contenido %}
+<div class="mx-auto mt-12 max-w-sm tarjeta">
+  <h1 class="mb-4 text-xl font-semibold">💰 Finanzas familiares</h1>
+  <form method="post" class="space-y-3">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ form.non_field_errors }}</div>{% endif %}
+    {% for campo in form %}{% include "componentes/campo.html" %}{% endfor %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="boton w-full">Entrar</button>
+  </form>
+</div>
+{% endblock %}

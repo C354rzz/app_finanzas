@@ -20,3 +20,10 @@ def hogar(usuario):
 def otro_hogar(db):
     otro = get_user_model().objects.create_user(email="otro@example.com", password="clave-123-x")
     return crear_hogar("Otra Familia", otro)
+
+
+@pytest.fixture
+def cliente(client, usuario, hogar):
+    """Cliente con sesión iniciada de un usuario que ya tiene hogar."""
+    client.force_login(usuario)
+    return client
