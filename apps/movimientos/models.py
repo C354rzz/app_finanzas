@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.catalogos.models import DINERO, Categoria, Concepto, Cuenta, Domicilio, Persona
+from apps.core.fechas import ANIO_MAXIMO, ANIO_MINIMO
 from apps.core.models import ModeloDeHogar
 
 
@@ -118,6 +119,8 @@ class Movimiento(ModeloDeHogar):
         super().clean()
         errores = {}
         tipo = self.Tipo
+        if self.fecha and not ANIO_MINIMO <= self.fecha.year <= ANIO_MAXIMO:
+            errores["fecha"] = f"La fecha debe estar entre {ANIO_MINIMO} y {ANIO_MAXIMO}."
         if self.tipo == tipo.GASTO and not self.categoria_id:
             errores["categoria"] = "Indica la categoría del gasto."
         if (

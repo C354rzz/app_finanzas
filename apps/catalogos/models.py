@@ -111,7 +111,7 @@ class Concepto(ModeloDeHogar):
         Domicilio,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.RESTRICT,
         verbose_name="domicilio por defecto",
         help_text=(
             "Opcional. Distingue el mismo concepto en varios domicilios (ej. Luz de Casa Fidel) "

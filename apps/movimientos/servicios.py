@@ -45,8 +45,12 @@ def guardar_movimiento(movimiento, usuario=None):
 
 @transaction.atomic
 def eliminar_movimiento(movimiento):
-    _aplicar_efecto(movimiento, revertir=True)
-    movimiento.delete()
+    """Revierte el efecto de la fila guardada (no de una copia en memoria) y la borra."""
+    guardado = Movimiento.objects.select_for_update().filter(pk=movimiento.pk).first()
+    if guardado is None:
+        return
+    _aplicar_efecto(guardado, revertir=True)
+    guardado.delete()
 
 
 def _aplicar_efecto(movimiento, revertir=False):

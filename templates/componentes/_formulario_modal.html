@@ -3,7 +3,7 @@
     <h2 class="text-lg font-semibold">{{ titulo }}</h2>
     <button type="button" class="px-2 text-slate-500" data-cerrar-modal aria-label="Cerrar">✕</button>
   </div>
-  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" class="space-y-3">
+  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" hx-disabled-elt="find button[type=submit]" class="space-y-3">
     {% csrf_token %}
     {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ formulario.non_field_errors }}</div>{% endif %}
     {% if formulario.secciones %}

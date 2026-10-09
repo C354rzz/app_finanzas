@@ -30,7 +30,7 @@ class FormularioDeHogar(forms.ModelForm):
                 continue
             consulta = campo.queryset.filter(hogar=hogar)
             if any(f.name == "activo" for f in modelo._meta.fields):
-                actual = self.initial.get(nombre)
+                actual = getattr(self.instance, f"{nombre}_id", None) if self.instance.pk else None
                 consulta = (
                     consulta.filter(Q(activo=True) | Q(pk=actual))
                     if actual

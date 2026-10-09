@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from django.contrib import messages
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError, RestrictedError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -130,7 +130,7 @@ def eliminar(request, catalogo, pk):
         with transaction.atomic():
             objeto.delete()
         messages.success(request, f"Se eliminó {objeto}.")
-    except (RestrictedError, ProtectedError):
+    except (RestrictedError, ProtectedError, IntegrityError):
         objeto.activo = False
         objeto.save(update_fields=["activo", "actualizado_en"])
         messages.info(

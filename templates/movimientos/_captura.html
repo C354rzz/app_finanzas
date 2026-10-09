@@ -11,7 +11,7 @@
       {% endfor %}
     </nav>
   {% endif %}
-  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" class="space-y-3">
+  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" hx-disabled-elt="find button[type=submit]" class="space-y-3">
     {% csrf_token %}
     {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ formulario.non_field_errors }}</div>{% endif %}
     {% for campo in formulario.principales %}{% include "componentes/campo.html" %}{% endfor %}
