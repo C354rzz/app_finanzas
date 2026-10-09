@@ -1,5 +1,6 @@
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
@@ -90,3 +91,33 @@ class Membresia(ConMarcasDeTiempo):
 
     def __str__(self):
         return f"{self.usuario} en {self.hogar} ({self.rol})"
+
+
+class HogarQuerySet(models.QuerySet):
+    def del_hogar(self, hogar):
+        return self.filter(hogar=hogar)
+
+
+class ModeloDeHogar(ConMarcasDeTiempo):
+    """Base de todo dato de negocio: pertenece a un hogar y no puede apuntar a otro."""
+
+    hogar = models.ForeignKey(Hogar, on_delete=models.CASCADE, related_name="+")
+
+    objects = HogarQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def clean(self):
+        super().clean()
+        if self.hogar_id is None:
+            return
+        errores = {}
+        for campo in self._meta.concrete_fields:
+            if not campo.many_to_one or campo.name == "hogar":
+                continue
+            relacionado = getattr(self, campo.name, None)
+            if isinstance(relacionado, ModeloDeHogar) and relacionado.hogar_id != self.hogar_id:
+                errores[campo.name] = "Pertenece a otro hogar."
+        if errores:
+            raise ValidationError(errores)
