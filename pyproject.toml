@@ -37,3 +37,6 @@ extend-exclude = ["**/migrations/*", "docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "DJ", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "finanzas"]

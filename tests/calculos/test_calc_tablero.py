@@ -1,9 +1,9 @@
 from decimal import Decimal as D
 
 import pytest
-from apps.calculos.tablero import AMBAR, ROJO, VERDE, avance, distribucion, semaforo
 
 from apps.calculos.comun import CERO, redondear
+from apps.calculos.tablero import AMBAR, ROJO, VERDE, avance, distribucion, semaforo
 
 
 def test_avance():

@@ -2,7 +2,6 @@ from datetime import date
 from decimal import Decimal as D
 
 import pytest
-from apps.tablero.servicios import armar_tablero
 
 from apps.calculos.comun import redondear
 from apps.catalogos.models import Categoria
@@ -10,6 +9,7 @@ from apps.movimientos.models import MetodoPago, Movimiento, TipoIngreso
 from apps.movimientos.servicios import guardar_movimiento
 from apps.presupuesto.models import PlantillaGasto, PlantillaIngreso
 from apps.presupuesto.servicios import obtener_plantilla
+from apps.tablero.servicios import armar_tablero
 
 pytestmark = pytest.mark.django_db
 
