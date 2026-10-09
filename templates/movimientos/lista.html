@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Movimientos · {{ titulo }}{% endblock %}
+{% block contenido %}
+<header class="mb-4 flex items-center justify-between gap-2">
+  <a class="boton-secundario" href="{% url 'movimientos:lista' anterior.0 anterior.1 %}?{{ consulta }}" aria-label="Mes anterior">‹</a>
+  <h1 class="text-lg font-semibold">{{ titulo }}</h1>
+  <a class="boton-secundario" href="{% url 'movimientos:lista' siguiente.0 siguiente.1 %}?{{ consulta }}" aria-label="Mes siguiente">›</a>
+</header>
+
+<details class="tarjeta mb-4" {% if consulta %}open{% endif %}>
+  <summary class="cursor-pointer font-medium">Filtros y búsqueda</summary>
+  <form method="get" class="mt-3 grid gap-3 sm:grid-cols-2">
+    {% for campo in filtros %}{% include "componentes/campo.html" %}{% endfor %}
+    <div class="flex gap-2 sm:col-span-2">
+      <button class="boton">Aplicar</button>
+      <a class="boton-secundario" href="{{ request.path }}">Limpiar</a>
+    </div>
+  </form>
+</details>
+
+<section class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Ingresos</p>
+    <p class="font-semibold text-emerald-700">{{ totales.ingresos|dinero }}</p>
+    {% if totales.ingresos_extra %}<p class="text-xs text-slate-500">incluye {{ totales.ingresos_extra|dinero }} extra</p>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Gastos</p>
+    <p class="font-semibold text-red-600">{{ totales.gastos|dinero }}</p>
+  </div>
+  <div class="tarjeta">
+    <p class="text-xs text-slate-500">Disponible</p>
+    <p class="font-semibold">{{ totales.disponible|dinero }}</p>
+  </div>
+  <div class="tarjeta text-sm">
+    <p class="text-xs text-slate-500">Exportar CSV</p>
+    <a class="text-sky-700" href="{% url 'movimientos:csv_mes' anio mes %}?{{ consulta }}">del mes</a> ·
+    <a class="text-sky-700" href="{% url 'movimientos:csv_anio' anio %}?{{ consulta }}">del año</a>
+  </div>
+</section>
+
+<section class="space-y-2">
+  {% for m in movimientos %}
+    <article class="tarjeta flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="truncate font-medium">{{ m.descripcion }}</p>
+        <p class="text-xs text-slate-500">{{ m.fecha|date:"d M" }} · {{ m.get_tipo_display }}{% if m.categoria %} · {{ m.categoria }}{% endif %}{% if m.persona %} · {{ m.persona }}{% endif %}{% if m.domicilio %} · {{ m.domicilio }}{% endif %}{% if m.es_hormiga %} · 🐜{% endif %}{% if m.es_extraordinario %} · extra{% endif %}</p>
+        <p class="text-xs text-slate-500">{{ m.get_metodo_pago_display }}{% if m.cuenta %} · {{ m.cuenta }}{% endif %}{% if m.cuenta_destino %} → {{ m.cuenta_destino }}{% endif %}</p>
+      </div>
+      <div class="shrink-0 text-right">
+        <p class="font-semibold {% if m.tipo == 'gasto' %}text-red-600{% elif m.tipo == 'ingreso' %}text-emerald-700{% else %}text-slate-500{% endif %}">{% if m.tipo == 'gasto' %}-{% elif m.tipo == 'ingreso' %}+{% endif %}{{ m.monto|dinero }}</p>
+        <div class="mt-1 flex justify-end gap-3 text-xs">
+          <button type="button" class="text-sky-700" hx-get="{% url 'movimientos:editar' m.pk %}" hx-target="#modal-contenido">Editar</button>
+          <button type="button" class="text-red-600" hx-post="{% url 'movimientos:eliminar' m.pk %}" hx-confirm="¿Eliminar este movimiento?">Eliminar</button>
+        </div>
+      </div>
+    </article>
+  {% empty %}
+    <p class="tarjeta text-slate-500">No hay movimientos en este mes.</p>
+  {% endfor %}
+</section>
+
+<section class="mt-6 grid gap-3 md:grid-cols-3">
+  {% for nombre_tabla, filas in tablas %}
+    <div class="tarjeta">
+      <h2 class="mb-2 font-medium">{{ nombre_tabla }}</h2>
+      <table class="w-full text-sm">
+        {% for etiqueta, total in filas %}
+          <tr class="border-t border-slate-100"><td class="py-1">{{ etiqueta }}</td><td class="py-1 text-right">{{ total|dinero }}</td></tr>
+        {% empty %}
+          <tr><td class="text-slate-500">Sin gastos</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}
