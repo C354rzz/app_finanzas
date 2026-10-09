@@ -28,4 +28,12 @@ docker compose exec web python manage.py createsuperuser --email tu@email.com
 docker compose exec web python manage.py crear_hogar --nombre "Mi Familia" --email tu@email.com
 ```
 
-Luego entra a http://localhost:8000/admin/ (en el plan 2 se agrega la interfaz principal).
+Luego entra a http://localhost:8000 con tu email y contraseña:
+
+- **Inicio**: tablero del mes (ingresos y gastos reales contra el presupuesto, categorías, deudas y alertas).
+- **+**: registra un gasto, ingreso (aguinaldo, PTU…), transferencia o pago de deuda.
+- **Movimientos**: lista del mes con filtros, totales y exportación a CSV.
+- **Presupuesto**: plantilla base y ajustes de cada mes.
+- **Más**: personas, domicilios, categorías, conceptos y cuentas.
+
+Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).
