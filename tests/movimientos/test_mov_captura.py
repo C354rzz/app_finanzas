@@ -12,7 +12,12 @@ HTMX = {"HX-Request": "true"}
 
 
 def gasto_minimo(concepto, monto="650"):
-    return {"monto": monto, "concepto": concepto.pk, "fecha": "2026-10-09", "metodo_pago": "efectivo"}
+    return {
+        "monto": monto,
+        "concepto": concepto.pk,
+        "fecha": "2026-10-09",
+        "metodo_pago": "efectivo",
+    }
 
 
 def concepto_ajeno(otro_hogar):

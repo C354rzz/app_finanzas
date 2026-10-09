@@ -78,7 +78,9 @@ class FormularioIngreso(FormularioMovimiento):
         tipo_ingreso = self.fields["tipo_ingreso"]
         tipo_ingreso.required = True
         tipo_ingreso.widget.attrs["data-extraordinarios"] = " ".join(INGRESOS_EXTRAORDINARIOS)
-        self.fields["es_extraordinario"].help_text = (
+        self.fields[
+            "es_extraordinario"
+        ].help_text = (
             "Aguinaldo, PTU, bonos…: cuentan en el ingreso real del mes, no en el promedio."
         )
 
@@ -88,7 +90,15 @@ class FormularioTransferencia(FormularioMovimiento):
     metodo_inicial = MetodoPago.TRANSFERENCIA
 
     class Meta(FormularioMovimiento.Meta):
-        fields = ["monto", "fecha", "cuenta", "cuenta_destino", "descripcion", "metodo_pago", "notas"]
+        fields = [
+            "monto",
+            "fecha",
+            "cuenta",
+            "cuenta_destino",
+            "descripcion",
+            "metodo_pago",
+            "notas",
+        ]
         labels = {"cuenta": "De la cuenta", "cuenta_destino": "A la cuenta"}
 
     def __init__(self, *args, **kwargs):
