@@ -1,0 +1,31 @@
+[project]
+name = "finanzas"
+version = "0.1.0"
+description = "App de finanzas familiares"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2,<5.3",
+    "psycopg[binary]>=3.2",
+    "django-environ>=0.12",
+    "gunicorn>=23",
+    "whitenoise>=6.8",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.9",
+    "pytest-cov>=6.0",
+    "factory-boy>=3.3",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "finanzas.settings"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q --import-mode=importlib"
+filterwarnings = ["ignore:No directory at:UserWarning"]

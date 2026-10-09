@@ -1,0 +1,15 @@
+.git
+.github
+.env
+.env.*
+.superpowers
+20*/
+media/
+backups/
+staticfiles/
+**/__pycache__
+.pytest_cache
+.ruff_cache
+*.pdf
+*.xlsx
+*.zip
