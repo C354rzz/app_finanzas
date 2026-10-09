@@ -4,6 +4,7 @@
   <a href="{% url 'movimientos:inicio' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>📒</span><span>Movimientos</span></a>
   <button type="button" hx-get="{% url 'movimientos:capturar' 'gasto' %}" hx-target="#modal-contenido" aria-label="Registrar movimiento"
           class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-2xl text-white shadow md:h-auto md:w-full md:justify-start md:gap-2 md:rounded-lg md:px-2 md:py-1 md:text-base">+<span class="hidden md:inline">Registrar</span></button>
-  <!-- más enlaces: Tasks 8, 10, 13 -->
+  <a href="{% url 'presupuesto:inicio' %}" class="flex flex-col items-center rounded-lg px-2 py-1 md:flex-row md:gap-2 hover:bg-slate-100"><span>🧮</span><span>Presupuesto</span></a>
+  <!-- más enlaces: Task 13 -->
   <form method="post" action="{% url 'logout' %}" class="hidden md:mt-auto md:block">{% csrf_token %}<button class="w-full rounded-lg px-2 py-1 text-left text-slate-500 hover:bg-slate-100">↩ Salir</button></form>
 </nav>

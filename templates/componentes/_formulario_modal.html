@@ -1,0 +1,22 @@
+<div class="p-4">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="text-lg font-semibold">{{ titulo }}</h2>
+    <button type="button" class="px-2 text-slate-500" data-cerrar-modal aria-label="Cerrar">✕</button>
+  </div>
+  <form method="post" action="{{ accion }}" hx-post="{{ accion }}" hx-target="#modal-contenido" class="space-y-3">
+    {% csrf_token %}
+    {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ formulario.non_field_errors }}</div>{% endif %}
+    {% if formulario.secciones %}
+      {% for titulo_seccion, descripcion, campos in formulario.secciones %}
+        <fieldset class="space-y-3 {% if titulo_seccion %}rounded-lg border border-slate-200 p-3{% endif %}">
+          {% if titulo_seccion %}<legend class="px-1 text-sm font-medium">{{ titulo_seccion }}</legend>{% endif %}
+          {% if descripcion %}<p class="text-xs text-slate-500">{{ descripcion }}</p>{% endif %}
+          {% for campo in campos %}{% include "componentes/campo.html" %}{% endfor %}
+        </fieldset>
+      {% endfor %}
+    {% else %}
+      {% for campo in formulario %}{% include "componentes/campo.html" %}{% endfor %}
+    {% endif %}
+    <button type="submit" class="boton w-full">Guardar</button>
+  </form>
+</div>
