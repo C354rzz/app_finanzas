@@ -1,0 +1,21 @@
+# Lista blanca: a la imagen solo entra lo necesario para ejecutar la app.
+*
+!apps/
+!finanzas/
+!docker/
+!templates/
+!static/
+!manage.py
+!pyproject.toml
+!uv.lock
+
+# Red de seguridad dentro de las carpetas permitidas: nunca datos personales ni secretos.
+**/*.pdf
+**/*.xls
+**/*.xlsx
+**/*.xml
+**/*.zip
+**/*.csv
+**/.env
+**/.env.*
+**/__pycache__
