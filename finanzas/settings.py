@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.catalogos",
     "apps.movimientos",
+    "apps.presupuesto",
 ]
 
 MIDDLEWARE = [

@@ -8,6 +8,22 @@ from apps.catalogos.models import Categoria, Concepto, Cuenta, Domicilio, Person
 from apps.catalogos.servicios import sembrar_catalogos
 from apps.core.servicios import crear_hogar
 
+# Renglones del presupuesto del Excel 2026 del usuario (montos y marcas; nombres ficticios).
+# Marcas: F = fijo, T = con tarjeta, H = hormiga.
+RENGLONES_EXCEL = {
+    "Casa": [("200", "F"), ("100", ""), ("1500", "F"), ("1100", "F"), ("500", "F"),
+             ("500", "F"), ("100", "F")],
+    "Comida": [("3000", "F"), ("3000", "F"), ("1600", "F"), ("2000", "F"), ("600", "H"),
+               ("400", "H")],
+    "Familia": [("4641", "F"), ("800", "F")],
+    "Transporte": [("1400", "F"), ("1000", "F")],
+    "Deudas": [("1500", "F"), ("2000", "F")],
+    "Salud": [("1000", "F")],
+    "Suscripciones": [("239", "TH"), ("10", "T"), ("49", "T"), ("196", "F")],
+    "Entretenimiento": [("500", "H")],
+    "Otros": [("300", "F"), ("500", "TH"), ("500", "TH")],
+}  # fmt: skip
+
 
 @pytest.fixture
 def usuario(db):
@@ -78,3 +94,36 @@ def catalogo(hogar):
             es_fijo=True,
         ),
     )
+
+
+@pytest.fixture
+def plantilla_excel(hogar):
+    """Plantilla con los valores del Excel: ingresos 32,977.52 y gastos 29,235."""
+    from apps.presupuesto.models import PlantillaGasto, PlantillaIngreso
+    from apps.presupuesto.servicios import obtener_plantilla
+
+    sembrar_catalogos(hogar)
+    plantilla = obtener_plantilla(hogar)
+    PlantillaIngreso.objects.create(
+        hogar=hogar,
+        plantilla=plantilla,
+        nombre="Salario mensual (neto)",
+        tipo_ingreso="salario",
+        monto=D("32977.52"),
+    )
+    for nombre_categoria, renglones in RENGLONES_EXCEL.items():
+        categoria = Categoria.objects.get(hogar=hogar, nombre=nombre_categoria)
+        for numero, (monto, marcas) in enumerate(renglones, start=1):
+            concepto = Concepto.objects.create(
+                hogar=hogar, categoria=categoria, nombre=f"{nombre_categoria} {numero}"
+            )
+            PlantillaGasto.objects.create(
+                hogar=hogar,
+                plantilla=plantilla,
+                concepto=concepto,
+                monto=D(monto),
+                es_fijo="F" in marcas,
+                con_tarjeta="T" in marcas,
+                es_hormiga="H" in marcas,
+            )
+    return plantilla
