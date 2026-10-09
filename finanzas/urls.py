@@ -6,5 +6,6 @@ from finanzas.vistas import salud
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("salud/", salud, name="salud"),
+    path("movimientos/", include("apps.movimientos.urls")),
     path("", include("apps.core.urls")),
 ]

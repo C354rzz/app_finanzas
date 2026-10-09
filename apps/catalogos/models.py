@@ -141,6 +141,10 @@ class Concepto(ModeloDeHogar):
     def __str__(self):
         return f"{self.nombre} ({self.domicilio})" if self.domicilio_id else self.nombre
 
+    @property
+    def nombre_con_categoria(self):
+        return f"{self.categoria} › {self}"
+
 
 class TasaMercado(ConMarcasDeTiempo):
     """Catálogo global de tasas promedio por tarjeta (de la hoja oculta del Excel)."""
