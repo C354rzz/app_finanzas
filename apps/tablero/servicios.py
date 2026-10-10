@@ -14,6 +14,12 @@ from apps.catalogos.models import Categoria
 from apps.catalogos.servicios import ResumenDeudas, resumir_deudas
 from apps.core.templatetags.formato import dinero, porcentaje
 from apps.movimientos.consultas import Filtros, Totales, movimientos_del_mes, totales
+from apps.planeacion.servicios import (
+    Patrimonio,
+    ResumenMetas,
+    calcular_patrimonio,
+    resumir_metas,
+)
 from apps.presupuesto.mensajes import mensaje_disponible
 from apps.presupuesto.servicios import gastos_del_mes, obtener_presupuesto_mes, resumen_mes
 
@@ -47,6 +53,8 @@ class Tablero:
     deudas: ResumenDeudas
     mensaje_disponible: tuple | None
     alertas: list
+    metas: ResumenMetas | None
+    patrimonio: Patrimonio
 
 
 def armar_tablero(hogar, anio, mes, persona=None, domicilio=None):
@@ -57,6 +65,7 @@ def armar_tablero(hogar, anio, mes, persona=None, domicilio=None):
     reales = totales(movimientos_del_mes(hogar, anio, mes, filtros))
     filtrado = persona is not None or domicilio is not None
     deudas = resumir_deudas(hogar)
+    metas = None if filtrado else resumir_metas(hogar, resumen)
     return Tablero(
         anio=anio,
         mes=mes,
@@ -71,7 +80,9 @@ def armar_tablero(hogar, anio, mes, persona=None, domicilio=None):
         mensaje_disponible=(
             None if filtrado else mensaje_disponible(resumen.disponible, resumen.meta_ahorro)
         ),
-        alertas=_alertas(resumen, reales, deudas, filtrado),
+        alertas=_alertas(resumen, reales, deudas, filtrado, metas),
+        metas=metas,
+        patrimonio=calcular_patrimonio(hogar),
     )
 
 
@@ -103,7 +114,7 @@ def _filas_por_categoria(hogar, gastos_presupuestados, reales):
     return filas
 
 
-def _alertas(resumen, reales, deudas, filtrado):
+def _alertas(resumen, reales, deudas, filtrado, metas=None):
     """RF-TAB-06: RN-08, RN-09, disponible negativo y meta de ahorro no alcanzable."""
     alertas = []
     if deudas.nivel in (NIVEL_CUIDADO, NIVEL_RIESGO):
@@ -133,6 +144,14 @@ def _alertas(resumen, reales, deudas, filtrado):
                 NIVEL_CUIDADO,
                 "Con este presupuesto no alcanzas tu meta de ahorro: "
                 f"te faltan {dinero(resumen.recorte_necesario)} al mes.",
+            )
+        )
+    if metas is not None and metas.filas and metas.total_mensual > resumen.disponible:
+        alertas.append(
+            Alerta(
+                NIVEL_CUIDADO,
+                f"Tus metas de ahorro piden {dinero(metas.total_mensual)} al mes y el disponible "
+                f"de tu presupuesto es {dinero(resumen.disponible)}.",
             )
         )
     return alertas
