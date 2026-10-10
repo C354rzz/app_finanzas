@@ -121,3 +121,36 @@ def test_comando_pide_confirmacion(catalogo, capsys):
 def test_comando_con_archivo_inexistente():
     with pytest.raises(CommandError, match="No existe el respaldo"):
         call_command("restaurar", "no-existe.zip", confirmar=True)
+
+
+@pytest.mark.parametrize("ruta", ["media//tmp/escapado.txt", "media/./x.txt", "media/"])
+def test_rutas_media_vacias_absolutas_o_con_punto_se_rechazan(tmp_path, ruta):
+    malo = tmp_path / "malo.zip"
+    with zipfile.ZipFile(malo, "w") as archivo:
+        archivo.writestr("manifiesto.json", json.dumps({"formato": 1, "migraciones": {}}))
+        archivo.writestr("datos.json", "[]")
+        archivo.writestr(ruta, "x")
+
+    with pytest.raises(ErrorRespaldo, match="ruta no permitida"):
+        leer_respaldo(malo)
+
+
+def test_manifiesto_con_migraciones_invalidas(tmp_path):
+    malo = zip_con(
+        tmp_path / "malo.zip",
+        **{"manifiesto.json": json.dumps({"formato": 1, "migraciones": ["x"]}), "datos.json": "[]"},
+    )
+
+    with pytest.raises(ErrorRespaldo, match="formato desconocido"):
+        leer_respaldo(malo)
+
+
+def test_error_al_escribir_los_archivos_da_mensaje_claro(catalogo, settings, tmp_path):
+    default_storage.save("documentos/1/abc.pdf", ContentFile(b"%PDF-1.4 prueba"))
+    respaldo = crear_respaldo()
+    archivo = tmp_path / "no-es-carpeta"
+    archivo.write_text("x")
+    settings.MEDIA_ROOT = archivo
+
+    with pytest.raises(ErrorRespaldo, match="respaldo de seguridad"):
+        restaurar_respaldo(respaldo)

@@ -158,3 +158,28 @@ def test_categorias_en_otro_orden(excel_ficticio, hogar):
         importar_excel(excel_ficticio(movida), hogar)
     assert not Concepto.objects.filter(hogar=hogar).exists()
     assert not TasaMercado.objects.exists()
+
+
+def test_xlsx_con_xml_danado(excel_ficticio, hogar, tmp_path):
+    import zipfile
+
+    original = excel_ficticio()
+    danado = tmp_path / "danado.xlsx"
+    with zipfile.ZipFile(original) as origen, zipfile.ZipFile(danado, "w") as destino:
+        for nombre in origen.namelist():
+            datos = origen.read(nombre)
+            destino.writestr(nombre, b"<roto" if nombre == "xl/workbook.xml" else datos)
+
+    with pytest.raises(ErrorExcel, match="No se pudo abrir"):
+        importar_excel(danado, hogar)
+
+
+def test_categoria_renombrada_no_se_duplica(excel_ficticio, hogar):
+    sembrar_catalogos(hogar)
+    Categoria.objects.filter(hogar=hogar, nombre="Comida").update(nombre="Alimentos")
+
+    importar_excel(excel_ficticio(), hogar)
+
+    assert Categoria.objects.filter(hogar=hogar).count() == 12
+    assert not Categoria.objects.filter(hogar=hogar, nombre="Comida").exists()
+    assert Concepto.objects.get(hogar=hogar, nombre="Comida 1").categoria.nombre == "Alimentos"

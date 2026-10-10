@@ -135,3 +135,19 @@ def test_comando_con_archivo_invalido(tmp_path, hogar):
 
     with pytest.raises(CommandError, match="No se pudo abrir"):
         call_command("importar_excel", str(ruta))
+
+
+def test_renglones_repetidos_en_el_mismo_excel_no_se_pierden(excel_ficticio, hogar):
+    def repetidos(libro):
+        libro["Patrimonio"]["C8"], libro["Patrimonio"]["E8"] = "💰Cuentas de Ahorro", "-"
+        libro["Patrimonio"]["G8"] = 9000
+        deudas = libro["Deudas"]
+        deudas["C6"], deudas["D6"], deudas["F6"], deudas["G6"] = "Banco Demo", "Oro", 500, 1000
+
+    resumen = importar_excel(excel_ficticio(repetidos), hogar)
+
+    assert Activo.objects.get(hogar=hogar, nombre="Cuentas de Ahorro (2)").valor_actual == D("9000")
+    assert Cuenta.objects.get(hogar=hogar, nombre="Banco Demo Oro (2)").saldo_actual == D("500")
+    assert resumen.existentes["activos"] == 0
+    assert resumen.existentes["tarjetas"] == 0
+    assert sum("repetido" in aviso for aviso in resumen.avisos) == 2

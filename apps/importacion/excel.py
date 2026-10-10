@@ -7,7 +7,6 @@ de mercado, que se actualiza. Con aplicar=False, todo se revierte al final (simu
 
 import math
 import re
-import zipfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -16,10 +15,9 @@ from django.db import transaction
 from openpyxl import load_workbook
 from openpyxl.utils import column_index_from_string
 from openpyxl.utils.cell import coordinate_from_string
-from openpyxl.utils.exceptions import InvalidFileException
 
 from apps.catalogos.models import Categoria, Concepto, Cuenta, TasaMercado
-from apps.catalogos.servicios import CATEGORIAS_INICIALES, sembrar_catalogos
+from apps.catalogos.servicios import CATEGORIAS_INICIALES
 from apps.importacion.clasificacion import normalizar
 from apps.movimientos.models import TipoIngreso
 from apps.planeacion.models import MESES_MAXIMOS, Activo, MetaAhorro
@@ -95,6 +93,8 @@ class Resumen:
     creados: Counter = field(default_factory=Counter)
     existentes: Counter = field(default_factory=Counter)
     avisos: list = field(default_factory=list)
+    # Nombres ya usados en esta importación, por sección (para renglones repetidos en el Excel).
+    nombres: defaultdict = field(default_factory=lambda: defaultdict(set))
 
 
 def _columna(columna):
@@ -158,7 +158,7 @@ def _abrir(ruta):
     try:
         valores = load_workbook(ruta, data_only=True)
         formulas = load_workbook(ruta, data_only=False)
-    except (InvalidFileException, zipfile.BadZipFile, KeyError, OSError, ValueError) as error:
+    except Exception as error:  # openpyxl lanza tipos muy distintos con archivos dañados
         raise ErrorExcel(
             "No se pudo abrir el archivo; debe ser el Excel (.xlsx) del planeador."
         ) from error
@@ -188,9 +188,9 @@ def importar_excel(ruta, hogar, aplicar=True):
     hojas = _abrir(ruta)
     _validar_formato(hojas)
     resumen = Resumen()
-    sembrar_catalogos(hogar)
+    categorias = _categorias(hogar)
     _importar_tasas(hojas["No borrar"], resumen)
-    _importar_presupuesto(hojas["Presupuesto"], hogar, resumen)
+    _importar_presupuesto(hojas["Presupuesto"], hogar, categorias, resumen)
     _importar_deudas(hojas["Deudas"], hogar, resumen)
     _importar_metas(hojas["Metas de Ahorro"], hogar, resumen)
     _importar_activos(hojas["Patrimonio"], hogar, resumen)
@@ -230,7 +230,42 @@ def _monto(hoja, fila, columna, contexto, resumen):
     return monto if monto is not None and monto > 0 else None
 
 
-def _importar_presupuesto(hoja, hogar, resumen):
+def _categorias(hogar):
+    """Categoría del hogar para cada una de las 12 del Excel: por nombre o, si el usuario la
+    renombró, por su orden. Solo crea las que faltan."""
+    existentes = list(Categoria.objects.del_hogar(hogar))
+    por_nombre = {normalizar(c.nombre): c for c in existentes}
+    iniciales = {normalizar(nombre) for nombre, _ in CATEGORIAS_INICIALES}
+    por_orden = {c.orden: c for c in existentes if normalizar(c.nombre) not in iniciales}
+    categorias = {}
+    for orden, (nombre, icono) in enumerate(CATEGORIAS_INICIALES, start=1):
+        categoria = por_nombre.get(normalizar(nombre)) or por_orden.pop(orden, None)
+        if categoria is None:
+            categoria = Categoria.objects.create(
+                hogar=hogar, nombre=nombre, icono=icono, orden=orden
+            )
+        categorias[nombre] = categoria
+    return categorias
+
+
+def _nombre_unico(resumen, seccion, nombre, largo):
+    """Si el nombre ya salió en este mismo Excel, lo importa como «nombre (2)» y avisa."""
+    vistos = resumen.nombres[seccion]
+    if normalizar(nombre) not in vistos:
+        vistos.add(normalizar(nombre))
+        return nombre
+    numero = 2
+    while normalizar(f"{nombre} ({numero})") in vistos:
+        numero += 1
+    nuevo = f"{nombre[: largo - 5]} ({numero})"
+    vistos.add(normalizar(nuevo))
+    resumen.avisos.append(
+        f"{seccion.capitalize()}: «{nombre}» está repetido en el Excel; se importó como «{nuevo}»."
+    )
+    return nuevo
+
+
+def _importar_presupuesto(hoja, hogar, categorias, resumen):
     plantilla = obtener_plantilla(hogar)
     if not plantilla.ingresos.exists() and not plantilla.gastos.exists():
         porcentaje = hoja.numero(14, "G", decimales=4)
@@ -258,7 +293,6 @@ def _importar_presupuesto(hoja, hogar, resumen):
         )
         resumen.creados["ingresos de la plantilla"] += 1
 
-    categorias = {c.nombre: c for c in Categoria.objects.del_hogar(hogar)}
     for (fila, columna), (nombre_categoria, _) in zip(BLOQUES, CATEGORIAS_INICIALES, strict=True):
         inicio = column_index_from_string(columna)
         vistos = set()
@@ -316,6 +350,7 @@ def _concepto(hogar, categoria, nombre, es_fijo, es_hormiga, resumen):
 
 
 def _crear_cuenta(hogar, resumen, seccion, nombre, **campos):
+    nombre = _nombre_unico(resumen, seccion, nombre, 80)
     if Cuenta.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
         resumen.existentes[seccion] += 1
         return
@@ -372,6 +407,7 @@ def _importar_metas(hoja, hogar, resumen):
         meta = hoja.numero(14, inicio + 2)
         if meta is None or meta <= 0:
             continue
+        nombre = _nombre_unico(resumen, "metas", nombre, 80)
         if MetaAhorro.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
             resumen.existentes["metas"] += 1
             continue
@@ -399,6 +435,7 @@ def _importar_activos(hoja, hogar, resumen):
             continue
         tipo = _sin_icono(hoja.texto(fila, "C"))
         nombre = (hoja.texto(fila, "E") or tipo or "Activo")[:120]
+        nombre = _nombre_unico(resumen, "activos", nombre, 120)
         if Activo.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
             resumen.existentes["activos"] += 1
             continue

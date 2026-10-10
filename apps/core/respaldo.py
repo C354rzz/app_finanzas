@@ -14,7 +14,7 @@ import zipfile
 import zlib
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -117,13 +117,11 @@ class Restauracion:
 
 
 def _ruta_permitida(nombre):
-    ruta = PurePosixPath(nombre)
-    return (
-        nombre.startswith("media/")
-        and not ruta.is_absolute()
-        and ".." not in ruta.parts
-        and "\\" not in nombre
-    )
+    r"""Solo rutas relativas dentro de media/: sin «//», «.», «..», «\» ni unidades («C:»)."""
+    if not nombre.startswith("media/") or "\\" in nombre:
+        return False
+    partes = nombre.removeprefix("media/").rstrip("/").split("/")
+    return all(parte not in ("", ".", "..") for parte in partes) and ":" not in partes[0]
 
 
 def leer_respaldo(ruta):
@@ -151,7 +149,13 @@ def leer_respaldo(ruta):
             }
         except (zipfile.BadZipFile, ValueError, zlib.error, EOFError) as error:
             raise ErrorRespaldo("El respaldo está dañado.") from error
-    if not isinstance(manifiesto, dict) or manifiesto.get("formato") != FORMATO:
+    migraciones = manifiesto.get("migraciones", {}) if isinstance(manifiesto, dict) else None
+    if (
+        not isinstance(manifiesto, dict)
+        or manifiesto.get("formato") != FORMATO
+        or not isinstance(migraciones, dict)
+        or not all(isinstance(nombres, list) for nombres in migraciones.values())
+    ):
         raise ErrorRespaldo("El respaldo tiene un formato desconocido.")
     if not isinstance(registros, list):
         raise ErrorRespaldo("El respaldo está dañado.")
@@ -175,9 +179,11 @@ def _validar_migraciones(manifiesto):
 
 
 def _escribir_media(archivos):
-    raiz = Path(settings.MEDIA_ROOT)
+    raiz = Path(settings.MEDIA_ROOT).resolve()
     for relativa, contenido in archivos.items():
-        destino = raiz / relativa
+        destino = (raiz / relativa).resolve()
+        if not destino.is_relative_to(raiz):  # defensa adicional; leer_respaldo ya lo validó
+            raise OSError(f"ruta fuera de media: {relativa}")
         destino.parent.mkdir(parents=True, exist_ok=True)
         destino.write_bytes(contenido)
 
@@ -201,7 +207,18 @@ def restaurar_respaldo(ruta):
                 f"No se pudo cargar el respaldo; no se cambió nada. Detalle: {error}"
             ) from error
     ContentType.objects.clear_cache()  # flush recreó los tipos de contenido con otros ids
-    _escribir_media(archivos)
+    try:
+        _escribir_media(archivos)
+    except OSError as error:
+        anterior = (
+            f" Tus datos anteriores están en el respaldo de seguridad {seguridad.name}."
+            if seguridad
+            else ""
+        )
+        raise ErrorRespaldo(
+            f"Se restauró la base de datos, pero no se pudieron escribir los archivos (PDFs): "
+            f"{error}. Libera espacio o revisa permisos y vuelve a restaurar.{anterior}"
+        ) from error
     return Restauracion(
         registros=len(json.loads(datos)), archivos=len(archivos), seguridad=seguridad
     )
