@@ -29,10 +29,11 @@ def megas():
 
 def pdfs_del_archivo(nombre, datos):
     """Lista de (nombre, contenido) de los PDFs de un archivo subido: PDF suelto o ZIP."""
-    if es_pdf(datos):
-        return [(nombre, datos)]
+    # Primero ZIP: un ZIP sin compresión contiene «%PDF-» al inicio de sus miembros.
     if es_zip(datos):
         return _pdfs_del_zip(datos)
+    if es_pdf(datos):
+        return [(nombre, datos)]
     raise ArchivoInvalidoError("no es un PDF ni un ZIP")
 
 
