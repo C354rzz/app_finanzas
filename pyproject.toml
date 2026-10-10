@@ -9,6 +9,10 @@ dependencies = [
     "django-environ>=0.12",
     "gunicorn>=23",
     "whitenoise>=6.8",
+    "django-q2>=1.11",
+    "pypdf[crypto]>=6",
+    "anthropic>=1.13,<2",
+    "pydantic>=2.10",
 ]
 
 [dependency-groups]
