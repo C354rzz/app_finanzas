@@ -8,6 +8,7 @@ from django.utils import timezone
 from apps.calculos.credito import amortizar
 from apps.calculos.metas import aporte_mensual_meta
 from apps.catalogos.models import DINERO, TASA, Cuenta, Domicilio
+from apps.core.fechas import ANIO_MAXIMO, ANIO_MINIMO
 from apps.core.models import ModeloDeHogar
 
 MESES_MAXIMOS = 600
@@ -56,6 +57,13 @@ class MetaAhorro(ModeloDeHogar):
 
     def __str__(self):
         return self.nombre
+
+    def clean(self):
+        super().clean()
+        if self.fecha_inicio and not ANIO_MINIMO <= self.fecha_inicio.year <= ANIO_MAXIMO:
+            raise ValidationError(
+                {"fecha_inicio": f"La fecha debe estar entre {ANIO_MINIMO} y {ANIO_MAXIMO}."}
+            )
 
     def aporte_mensual(self):
         """RN-05: ahorro mensual necesario para llegar a la meta."""

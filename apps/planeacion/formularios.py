@@ -10,7 +10,7 @@ from apps.core.formularios import CampoPorcentaje, FormularioDeHogar
 from apps.planeacion.models import MESES_MAXIMOS, Activo, MetaAhorro
 
 FECHA = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
-PAGO_ANTICIPADO = re.compile(r"^\s*(\d+)\s*[=:]\s*(\d[\d,]*(?:\.\d+)?)\s*$")
+PAGO_ANTICIPADO = re.compile(r"^\s*(\d{1,4})\s*[=:]\s*(\d[\d,]{0,20}(?:\.\d{1,2})?)\s*$")
 
 
 class FormularioMeta(FormularioDeHogar):
