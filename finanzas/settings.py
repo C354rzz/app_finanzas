@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "apps.movimientos",
     "apps.presupuesto",
     "apps.planeacion",
+    "apps.importacion",
     "apps.tablero",
 ]
 
