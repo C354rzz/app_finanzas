@@ -39,6 +39,19 @@ Luego entra a http://localhost:8000 con tu email y contraseña:
 
 Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).
 
+### Cargar tu Excel (una sola vez)
+
+Trae tu presupuesto, conceptos, tarjetas, créditos, metas, activos y el catálogo de tasas de mercado del «Financial Planner». Solo crea lo que falta: no duplica ni cambia lo que ya capturaste.
+
+```powershell
+# 1) Simulación: muestra cuántos registros se crearían, sin guardar nada.
+powershell -ExecutionPolicy Bypass -File scripts\importar_excel.ps1 -Archivo "..\2026\documentos\Financial Planner template.xlsx"
+# 2) Si los números se ven bien, importa de verdad.
+powershell -ExecutionPolicy Bypass -File scripts\importar_excel.ps1 -Archivo "..\2026\documentos\Financial Planner template.xlsx" -Aplicar
+```
+
+Si aparecen avisos (montos con texto, renglones repetidos), agrega `--detalle` al comando `importar_excel` para verlos. El archivo se copia al contenedor solo mientras se importa.
+
 ## Uso diario y acceso desde el celular
 
 **Modo de uso diario** (gunicorn, sin depuración). En `.env`: `DJANGO_DEBUG=0` y una `DJANGO_SECRET_KEY` larga y aleatoria. Luego:

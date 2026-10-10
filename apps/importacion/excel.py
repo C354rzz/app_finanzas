@@ -18,10 +18,11 @@ from openpyxl.utils import column_index_from_string
 from openpyxl.utils.cell import coordinate_from_string
 from openpyxl.utils.exceptions import InvalidFileException
 
-from apps.catalogos.models import Categoria, Concepto, TasaMercado
+from apps.catalogos.models import Categoria, Concepto, Cuenta, TasaMercado
 from apps.catalogos.servicios import CATEGORIAS_INICIALES, sembrar_catalogos
 from apps.importacion.clasificacion import normalizar
 from apps.movimientos.models import TipoIngreso
+from apps.planeacion.models import MESES_MAXIMOS, Activo, MetaAhorro
 from apps.presupuesto.models import Periodicidad, PlantillaGasto, PlantillaIngreso
 from apps.presupuesto.servicios import obtener_plantilla
 
@@ -58,6 +59,31 @@ FILAS_INGRESOS = range(3, 11)
 LIMITE = Decimal("1e10")
 VACIOS = {"", "-"}
 VERDADEROS = {"true", "verdadero", "si", "x"}
+FILAS_TARJETAS = range(3, 9)
+FILAS_CREDITOS = range(17, 25)
+FILAS_ACTIVOS = range(4, 15)
+# Metas: columna del nombre (fila 8); los valores van dos columnas a la derecha, filas 11–14.
+COLUMNAS_METAS = ["C", "G", "K", "O"]
+TIPOS_META = {
+    "regalo": MetaAhorro.Tipo.REGALO,
+    "vacaciones": MetaAhorro.Tipo.VACACIONES,
+    "auto": MetaAhorro.Tipo.AUTO,
+    "casa": MetaAhorro.Tipo.CASA,
+    "educacion": MetaAhorro.Tipo.EDUCACION,
+    "fondo para emergencias": MetaAhorro.Tipo.FONDO_EMERGENCIA,
+    "compra importante": MetaAhorro.Tipo.COMPRA_IMPORTANTE,
+    "remodelacion": MetaAhorro.Tipo.REMODELACION,
+}
+TIPOS_ACTIVO = {
+    "casa/departamento": Activo.Tipo.INMUEBLE,
+    "auto": Activo.Tipo.AUTO,
+    "cuentas de ahorro": Activo.Tipo.CUENTA_AHORRO,
+    "cuentas de inversion": Activo.Tipo.CUENTA_INVERSION,
+    "acciones": Activo.Tipo.ACCIONES,
+    "stock options": Activo.Tipo.STOCK_OPTIONS,
+    "afore": Activo.Tipo.AFORE,
+    "terreno": Activo.Tipo.TERRENO,
+}
 
 
 class ErrorExcel(Exception):
@@ -165,6 +191,9 @@ def importar_excel(ruta, hogar, aplicar=True):
     sembrar_catalogos(hogar)
     _importar_tasas(hojas["No borrar"], resumen)
     _importar_presupuesto(hojas["Presupuesto"], hogar, resumen)
+    _importar_deudas(hojas["Deudas"], hogar, resumen)
+    _importar_metas(hojas["Metas de Ahorro"], hogar, resumen)
+    _importar_activos(hojas["Patrimonio"], hogar, resumen)
     if not aplicar:
         transaction.set_rollback(True)
     return resumen
@@ -284,3 +313,99 @@ def _concepto(hogar, categoria, nombre, es_fijo, es_hormiga, resumen):
     return Concepto.objects.create(
         hogar=hogar, categoria=categoria, nombre=nombre, es_fijo=es_fijo, es_hormiga=es_hormiga
     )
+
+
+def _crear_cuenta(hogar, resumen, seccion, nombre, **campos):
+    if Cuenta.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
+        resumen.existentes[seccion] += 1
+        return
+    Cuenta.objects.create(hogar=hogar, nombre=nombre, **campos)
+    resumen.creados[seccion] += 1
+
+
+def _importar_deudas(hoja, hogar, resumen):
+    for fila in FILAS_TARJETAS:
+        banco, producto = hoja.texto(fila, "C")[:80], hoja.texto(fila, "D")[:80]
+        saldo, linea = hoja.numero(fila, "F"), hoja.numero(fila, "G")
+        if not banco or not (saldo or linea):
+            continue  # renglón vacío o de ejemplo de la plantilla
+        if not producto or normalizar(producto).startswith(normalizar(banco)):
+            nombre = producto or banco
+        else:
+            nombre = f"{banco} {producto}"
+        # Con fórmula, el Excel usaba el promedio de mercado: la app lo calcula (tasa_sugerida).
+        tasa = None if hoja.es_formula(fila, "E") else hoja.numero(fila, "E", decimales=4)
+        _crear_cuenta(
+            hogar,
+            resumen,
+            "tarjetas",
+            nombre[:80],
+            tipo=Cuenta.Tipo.CREDITO,
+            institucion=banco,
+            producto=producto,
+            saldo_actual=saldo or Decimal("0"),
+            linea_credito=linea,
+            tasa_anual=tasa if tasa is not None and 0 < tasa < 10 else None,
+            paga_total_mensual={"si": True, "no": False}.get(normalizar(hoja.texto(fila, "I"))),
+        )
+    for fila in FILAS_CREDITOS:
+        nombre = hoja.texto(fila, "C")[:80]
+        inicial, actual, mensualidad = (hoja.numero(fila, columna) for columna in "DEF")
+        if not nombre or not (inicial or actual or mensualidad):
+            continue
+        _crear_cuenta(
+            hogar,
+            resumen,
+            "créditos",
+            nombre,
+            tipo=Cuenta.Tipo.PRESTAMO,
+            monto_inicial=inicial,
+            saldo_actual=actual or Decimal("0"),
+            mensualidad=mensualidad,
+        )
+
+
+def _importar_metas(hoja, hogar, resumen):
+    for columna in COLUMNAS_METAS:
+        inicio = column_index_from_string(columna)
+        nombre = _sin_icono(hoja.texto(8, inicio))[:80] or "Meta"
+        meta = hoja.numero(14, inicio + 2)
+        if meta is None or meta <= 0:
+            continue
+        if MetaAhorro.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
+            resumen.existentes["metas"] += 1
+            continue
+        meses = hoja.numero(12, inicio + 2, decimales=0)
+        if meses is None or not 1 <= meses <= MESES_MAXIMOS:
+            resumen.avisos.append(f"Metas: «{nombre}» no tiene meses válidos; se usaron 12.")
+            meses = Decimal("12")
+        tasa = hoja.numero(13, inicio + 2, decimales=4)
+        MetaAhorro.objects.create(
+            hogar=hogar,
+            nombre=nombre,
+            tipo=TIPOS_META.get(normalizar(nombre), MetaAhorro.Tipo.OTRO),
+            monto_objetivo=meta,
+            ahorro_actual=max(hoja.numero(11, inicio + 2) or Decimal("0"), Decimal("0")),
+            meses=int(meses),
+            tasa_anual=tasa if tasa is not None and 0 <= tasa < 10 else Decimal("0"),
+        )
+        resumen.creados["metas"] += 1
+
+
+def _importar_activos(hoja, hogar, resumen):
+    for fila in FILAS_ACTIVOS:
+        valor = hoja.numero(fila, "G")
+        if valor is None or valor <= 0:
+            continue
+        tipo = _sin_icono(hoja.texto(fila, "C"))
+        nombre = (hoja.texto(fila, "E") or tipo or "Activo")[:120]
+        if Activo.objects.filter(hogar=hogar, nombre__iexact=nombre).exists():
+            resumen.existentes["activos"] += 1
+            continue
+        Activo.objects.create(
+            hogar=hogar,
+            nombre=nombre,
+            valor_actual=valor,
+            tipo=TIPOS_ACTIVO.get(normalizar(tipo), Activo.Tipo.OTRO),
+        )
+        resumen.creados["activos"] += 1
