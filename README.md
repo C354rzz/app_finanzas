@@ -39,6 +39,26 @@ Luego entra a http://localhost:8000 con tu email y contraseña:
 
 Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).
 
+## Uso diario y acceso desde el celular
+
+**Modo de uso diario** (gunicorn, sin depuración). En `.env`: `DJANGO_DEBUG=0` y una `DJANGO_SECRET_KEY` larga y aleatoria. Luego:
+
+```powershell
+docker compose -f docker-compose.yml up -d --build
+```
+
+Para volver al modo desarrollo: `docker compose up -d`. Después de actualizar el código (`git pull`), repite el comando de uso diario.
+
+**Fuera de casa con Tailscale** (HTTPS sin abrir puertos del router):
+
+1. Instala Tailscale en la PC y en el celular con la misma cuenta.
+2. En https://login.tailscale.com/admin/dns activa **MagicDNS** y **HTTPS Certificates**.
+3. En la PC (PowerShell): `tailscale serve --bg 8000`. Muestra tu dirección, por ejemplo `https://mi-pc.tail1234.ts.net`.
+4. En `.env` agrega el nombre a `DJANGO_ALLOWED_HOSTS` (`localhost,127.0.0.1,mi-pc.tail1234.ts.net`) y la dirección completa a `DJANGO_CSRF_TRUSTED_ORIGINS` (`https://mi-pc.tail1234.ts.net`). Reinicia con el comando de uso diario.
+5. En el celular abre esa dirección e instala la app: en Android, menú ⋮ → **Instalar app**; en iPhone (Safari), Compartir → **Agregar a inicio**.
+
+La app solo responde mientras la PC está encendida. Sin conexión verás el aviso «Sin conexión», nunca datos guardados.
+
 ## Importar documentos con IA
 
 1. Crea una clave en https://platform.claude.com y ponla en `.env`: `ANTHROPIC_API_KEY=sk-ant-...`.
