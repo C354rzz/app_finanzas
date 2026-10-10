@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Revisar {{ documento }}{% endblock %}
+{% block contenido %}
+<h1 class="mb-1 text-lg font-semibold"><a class="text-slate-400" href="{% url 'importacion:importar' %}">Importar ›</a> {{ documento.nombre_original }}</h1>
+<p class="mb-4 text-sm text-slate-600">{{ documento.get_tipo_display|default:"Documento" }}{% if documento.emisor %} de {{ documento.emisor }}{% endif %}{% if documento.periodo_inicio and documento.periodo_fin %} · del {{ documento.periodo_inicio|date:"d M" }} al {{ documento.periodo_fin|date:"d M Y" }}{% endif %}{% if documento.cuenta %} · cuenta {{ documento.cuenta }}{% endif %}{% if documento.paginas %} · {{ documento.paginas }} pág.{% endif %} · <a class="text-sky-700" href="{% url 'importacion:original' documento.pk %}" target="_blank" rel="noopener">ver PDF</a></p>
+{% if documento.aviso %}<p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{{ documento.aviso }}</p>{% endif %}
+
+{% if documento.saldo_al_corte is not None and documento.cuenta %}
+  <form method="post" action="{% url 'importacion:saldo' documento.pk %}" class="tarjeta mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+    {% csrf_token %}
+    <span>Saldo al corte: <strong>{{ documento.saldo_al_corte|dinero }}</strong> · registrado en {{ documento.cuenta }}: {{ documento.cuenta.saldo_actual|dinero }}</span>
+    <button class="boton-secundario text-xs">Actualizar saldo de la cuenta</button>
+  </form>
+{% endif %}
+
+{% if pendientes %}
+  <div class="mb-3 flex flex-wrap gap-2">
+    <button type="button" class="boton text-sm" hx-post="{% url 'importacion:aceptar_todo' documento.pk %}" hx-confirm="¿Aceptar todas las propuestas que no parecen duplicadas?">Aceptar todo lo no duplicado</button>
+    <button type="button" class="boton-secundario text-sm" hx-post="{% url 'importacion:descartar_todo' documento.pk %}" hx-confirm="¿Descartar todas las propuestas pendientes?">Descartar todo</button>
+  </div>
+{% endif %}
+
+<section class="space-y-2">
+  {% for p in pendientes %}
+    <article class="tarjeta {% if p.posible_duplicado_de %}ring-2 ring-amber-300{% endif %}">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="font-medium">{{ p.descripcion }}</p>
+          <p class="text-xs text-slate-500">{{ p.fecha|date:"d M Y" }} · {{ p.get_tipo_display }}{% if p.tipo_ingreso %} ({{ p.get_tipo_ingreso_display }}){% endif %} · {{ p.get_metodo_pago_display }}{% if p.cuenta %} · {{ p.cuenta }}{% endif %}{% if p.cuenta_destino %} → {{ p.cuenta_destino }}{% endif %}</p>
+          <p class="text-xs text-slate-500">{% if p.concepto %}{{ p.concepto.nombre_con_categoria }}{% elif p.categoria %}{{ p.categoria }}{% else %}Sin categoría{% endif %}{% if p.persona %} · {{ p.persona }}{% endif %}{% if p.domicilio %} · {{ p.domicilio }}{% endif %}{% if p.es_hormiga %} · 🐜{% endif %}{% if p.es_extraordinario %} · extra{% endif %}{% if p.regla %} · regla «{{ p.regla.patron }}»{% elif p.confianza is not None %} · confianza {{ p.confianza|porcentaje:0 }}{% endif %}</p>
+          {% if p.posible_duplicado_de %}<p class="text-xs text-amber-700">⚠️ Posible duplicado de «{{ p.posible_duplicado_de.descripcion }}» del {{ p.posible_duplicado_de.fecha|date:"d M" }}</p>{% endif %}
+          {% if p.error %}<p class="text-xs text-red-600">{{ p.error }}</p>{% endif %}
+        </div>
+        <p class="shrink-0 font-semibold">{{ p.monto|dinero }}</p>
+      </div>
+      <form class="mt-2 flex flex-wrap items-center justify-end gap-3 text-xs" hx-post="{% url 'importacion:aceptar' p.pk %}" hx-disabled-elt="find button[type=submit]">
+        <label class="flex items-center gap-1"><input type="checkbox" name="recordar"> Recordar clasificación</label>
+        <button type="button" class="text-sky-700" hx-get="{% url 'importacion:editar' p.pk %}" hx-target="#modal-contenido">Editar</button>
+        <button type="button" class="text-red-600" hx-post="{% url 'importacion:descartar' p.pk %}">Descartar</button>
+        <button type="submit" class="boton px-3 py-1 text-xs">Aceptar</button>
+      </form>
+    </article>
+  {% empty %}
+    <p class="tarjeta text-slate-500">No hay propuestas pendientes.</p>
+  {% endfor %}
+</section>
+
+{% if revisadas %}
+  <details class="tarjeta mt-4">
+    <summary class="cursor-pointer text-sm font-medium">Revisadas ({{ revisadas|length }})</summary>
+    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+      {% for p in revisadas %}
+        <li class="flex justify-between gap-2 py-1"><span>{{ p.fecha|date:"d M" }} · {{ p.descripcion }}</span><span class="{% if p.estado == 'aceptado' %}text-emerald-700{% else %}text-slate-400 line-through{% endif %}">{{ p.monto|dinero }}</span></li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}
+{% endblock %}

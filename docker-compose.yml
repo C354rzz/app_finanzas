@@ -30,6 +30,25 @@ services:
     volumes:
       - media:/app/media
 
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: python manage.py qcluster
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DJANGO_MIGRAR: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - media:/app/media
+
 volumes:
   pgdata:
   media:

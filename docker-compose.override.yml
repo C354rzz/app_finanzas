@@ -13,3 +13,9 @@ services:
       target: css
     volumes:
       - .:/app
+
+  worker:
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - .:/app

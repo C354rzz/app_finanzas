@@ -146,7 +146,7 @@ Prioridad: **M** = obligatorio para v1 · **D** = deseable en v1.
 | RF-IMP-08 | Pantalla de revisión: tabla editable de propuestas. Por fila: aceptar, editar o descartar. Acciones masivas: aceptar todo lo no duplicado, descartar todo. | M |
 | RF-IMP-09 | Al aceptar una propuesta se crea el movimiento con `origen = importado` y el enlace al documento. Opción "recordar esta clasificación", que crea una regla. | M |
 | RF-IMP-10 | **Nómina**: crear una propuesta de ingreso `salario` por el neto del recibo, con el periodo en la descripción. Las percepciones extraordinarias del recibo (aguinaldo, PTU, bono) se proponen como ingresos aparte. | M |
-| RF-IMP-11 | **Recibo de servicio**: crear una propuesta de gasto con fecha límite de pago, concepto (luz/agua/internet) y domicilio deducido de la dirección del recibo. | M |
+| RF-IMP-11 | **Recibo de servicio**: se identifica (emisor y periodo) pero **no genera propuesta de gasto**, porque un recibo no prueba el pago; el gasto entra cuando aparece el cargo en el estado de cuenta o se captura a mano. *(Cambio aprobado por el usuario el 2026-10-09; la conciliación recibo ↔ pago queda para la v2.)* | M |
 | RF-IMP-12 | **Estado de cuenta**: actualizar el saldo de la cuenta (`saldo_actual`, `fecha_saldo`) con el saldo al corte, previa confirmación. | D |
 | RF-IMP-13 | Registrar por documento el modelo usado, los tokens y el costo estimado. Mostrar el costo acumulado del mes. | M |
 | RF-IMP-14 | Ver el documento original desde la propuesta o el movimiento. | D |

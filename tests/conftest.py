@@ -127,3 +127,56 @@ def plantilla_excel(hogar):
                 es_hormiga="H" in marcas,
             )
     return plantilla
+
+
+@pytest.fixture(autouse=True)
+def media_temporal(settings, tmp_path):
+    """Los archivos subidos en las pruebas van a una carpeta temporal."""
+    settings.MEDIA_ROOT = tmp_path / "media"
+
+
+def _pdf_minimo(paginas):
+    """PDF válido con una página por texto (Helvetica, WinAnsi). Solo para pruebas."""
+
+    def escapar(linea):
+        return linea.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    objetos = {
+        1: b"<< /Type /Catalog /Pages 2 0 R >>",
+        3: b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    }
+    hijos = []
+    numero = 4
+    for texto in paginas:
+        lineas = " ".join(f"({escapar(linea)}) Tj T*" for linea in texto.split("\n"))
+        flujo = f"BT /F1 10 Tf 12 TL 40 800 Td {lineas} ET".encode("latin-1")
+        objetos[numero] = (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 3 0 R >> >> /Contents " + f"{numero + 1} 0 R >>".encode()
+        )
+        objetos[numero + 1] = (
+            f"<< /Length {len(flujo)} >>\nstream\n".encode() + flujo + b"\nendstream"
+        )
+        hijos.append(f"{numero} 0 R")
+        numero += 2
+    objetos[2] = f"<< /Type /Pages /Kids [{' '.join(hijos)}] /Count {len(hijos)} >>".encode()
+    salida = bytearray(b"%PDF-1.4\n")
+    posiciones = {}
+    for clave in sorted(objetos):
+        posiciones[clave] = len(salida)
+        salida += f"{clave} 0 obj\n".encode() + objetos[clave] + b"\nendobj\n"
+    inicio_xref = len(salida)
+    total = max(objetos) + 1
+    salida += f"xref\n0 {total}\n0000000000 65535 f \n".encode()
+    for clave in range(1, total):
+        salida += f"{posiciones[clave]:010d} 00000 n \n".encode()
+    salida += (
+        f"trailer\n<< /Size {total} /Root 1 0 R >>\nstartxref\n{inicio_xref}\n%%EOF\n".encode()
+    )
+    return bytes(salida)
+
+
+@pytest.fixture
+def crear_pdf():
+    """Fábrica de PDFs ficticios: crear_pdf("texto página 1", "texto página 2")."""
+    return lambda *paginas: _pdf_minimo(paginas or ("",))

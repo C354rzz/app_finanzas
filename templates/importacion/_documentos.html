@@ -1,0 +1,21 @@
+<section id="documentos" class="space-y-2" {% if hay_pendientes %}hx-get="{% url 'importacion:documentos' %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  {% for documento in documentos %}
+    <article class="tarjeta flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="truncate font-medium">{{ documento.nombre_original }}</p>
+        <p class="text-xs text-slate-500">{{ documento.creado_en|date:"d M Y H:i" }}{% if documento.tipo %} · {{ documento.get_tipo_display }}{% endif %}{% if documento.emisor %} · {{ documento.emisor }}{% endif %}{% if documento.periodo_fin %} · al {{ documento.periodo_fin|date:"d M Y" }}{% endif %}{% if documento.costo_estimado_usd is not None %} · US${{ documento.costo_estimado_usd }}{% endif %}</p>
+        {% if documento.error %}<p class="text-xs text-red-600">{{ documento.error }}</p>{% endif %}
+        {% if documento.aviso %}<p class="text-xs text-amber-700">{{ documento.aviso }}</p>{% endif %}
+      </div>
+      <div class="flex shrink-0 flex-col items-end gap-1 text-xs">
+        <span class="rounded-full px-2 py-0.5 {% if documento.estado == 'error' %}bg-red-100 text-red-700{% elif documento.estado == 'por_revisar' %}bg-amber-100 text-amber-800{% elif documento.estado == 'confirmado' %}bg-emerald-100 text-emerald-800{% else %}bg-slate-100 text-slate-600{% endif %}">{{ documento.get_estado_display }}{% if documento.pendientes %} · {{ documento.pendientes }} por revisar{% endif %}</span>
+        {% if documento.estado == 'por_revisar' or documento.estado == 'confirmado' or documento.estado == 'descartado' %}<a class="text-sky-700" href="{% url 'importacion:revisar' documento.pk %}">Revisar</a>{% endif %}
+        {% if documento.estado == 'error' %}<form method="post" action="{% url 'importacion:reintentar' documento.pk %}">{% csrf_token %}<button class="text-sky-700">Reintentar</button></form>{% endif %}
+        <a class="text-sky-700" href="{% url 'importacion:original' documento.pk %}" target="_blank" rel="noopener">Ver PDF</a>
+        <form method="post" action="{% url 'importacion:eliminar' documento.pk %}" onsubmit="return confirm('¿Eliminar este documento? Los movimientos ya aceptados se conservan.')">{% csrf_token %}<button class="text-red-600">Eliminar</button></form>
+      </div>
+    </article>
+  {% empty %}
+    <p class="tarjeta text-slate-500">Aún no has importado documentos.</p>
+  {% endfor %}
+</section>

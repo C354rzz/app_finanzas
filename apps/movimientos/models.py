@@ -92,6 +92,13 @@ class Movimiento(ModeloDeHogar):
     es_hormiga = models.BooleanField("hormiga 🐜", default=False)
     notas = models.TextField(blank=True)
     origen = models.CharField(max_length=10, choices=Origen.choices, default=Origen.MANUAL)
+    documento = models.ForeignKey(
+        "importacion.Documento",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="movimientos",
+    )
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

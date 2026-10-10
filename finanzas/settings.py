@@ -23,11 +23,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_q",
     "apps.core",
     "apps.catalogos",
     "apps.movimientos",
     "apps.presupuesto",
     "apps.planeacion",
+    "apps.importacion",
     "apps.tablero",
 ]
 
@@ -94,3 +96,20 @@ AUTH_USER_MODEL = "core.Usuario"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "login"
+
+# Cola de tareas (Django-Q2) usando la base de datos; el worker corre `manage.py qcluster`.
+Q_CLUSTER = {
+    "name": "finanzas",
+    "orm": "default",
+    "workers": 1,
+    "timeout": 900,
+    "retry": 1200,
+    "max_attempts": 1,
+    "catch_up": False,
+}
+
+# Importación de documentos (plan 4).
+IMPORTACION_EXTRACTOR = env(
+    "IMPORTACION_EXTRACTOR", default="apps.importacion.extractor.ExtractorClaude"
+)
+DATA_UPLOAD_MAX_NUMBER_FILES = 20

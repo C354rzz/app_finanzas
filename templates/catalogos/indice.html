@@ -20,6 +20,7 @@
   </ul>
 </section>
 <section class="tarjeta space-y-2">
+  <a class="block text-sky-700" href="{% url 'presupuesto:inicio' %}">🧮 Presupuesto del mes</a>
   <a class="block text-sky-700" href="{% url 'presupuesto:plantilla' %}">Plantilla de presupuesto</a>
   {% if user.is_staff %}<a class="block text-sky-700" href="{% url 'admin:index' %}">Administración avanzada</a>{% endif %}
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="text-red-600">Salir</button></form>
