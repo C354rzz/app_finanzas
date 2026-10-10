@@ -2,7 +2,9 @@
 
 import hashlib
 import io
+import lzma
 import zipfile
+import zlib
 from pathlib import PurePosixPath
 
 from apps.importacion.errores import ArchivoInvalidoError
@@ -58,7 +60,10 @@ def _pdfs_del_zip(datos):
                     raise ArchivoInvalidoError(f"{nombre} pesa más de {megas()} MB")
                 if es_pdf(contenido):
                     pdfs.append((nombre, contenido))
-    except (zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError) as error:
+    except (
+        zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError, zlib.error,
+        lzma.LZMAError,
+    ) as error:  # fmt: skip
         raise ArchivoInvalidoError("el ZIP está dañado o protegido con contraseña") from error
     if not pdfs:
         raise ArchivoInvalidoError("el ZIP no contiene PDFs")

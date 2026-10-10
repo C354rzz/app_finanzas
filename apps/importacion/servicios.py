@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 
 import anthropic
 from django.conf import settings
@@ -190,13 +191,31 @@ def procesar_documento(documento_id):
 
 
 def _marcar_error(documento, mensaje):
-    documento.estado = Documento.Estado.ERROR
-    documento.error = mensaje
-    documento.save(update_fields=["estado", "error", "paginas", "actualizado_en"])
+    # update() en vez de save(): si el documento se borró mientras se procesaba, no lo revive.
+    Documento.objects.filter(pk=documento.pk).update(
+        estado=Documento.Estado.ERROR,
+        error=mensaje,
+        paginas=documento.paginas,
+        actualizado_en=timezone.now(),
+    )
+
+
+def marcar_atascados(hogar):
+    """Un documento «procesando» más tiempo que el límite de la tarea quedó interrumpido."""
+    limite = timezone.now() - timedelta(seconds=settings.Q_CLUSTER["timeout"] + 60)
+    Documento.objects.del_hogar(hogar).filter(
+        estado=Documento.Estado.PROCESANDO, actualizado_en__lt=limite
+    ).update(
+        estado=Documento.Estado.ERROR,
+        error="El procesamiento se interrumpió; usa «Reintentar».",
+        actualizado_en=timezone.now(),
+    )
 
 
 @transaction.atomic
 def _guardar_resultado(documento, catalogo, resultado):
+    if not Documento.objects.select_for_update().filter(pk=documento.pk).exists():
+        return  # se eliminó mientras se procesaba
     datos = resultado.documento
     documento.tipo = datos.tipo_documento
     documento.emisor = datos.emisor
@@ -220,7 +239,7 @@ def _guardar_resultado(documento, catalogo, resultado):
     for movimiento in resultado.movimientos:
         _crear_propuesta(documento, catalogo, movimiento)
     documento.estado = Documento.Estado.POR_REVISAR
-    documento.save()
+    documento.save(force_update=True)
 
 
 def _crear_propuesta(documento, catalogo, datos):
@@ -388,6 +407,17 @@ def actualizar_saldo(documento):
     if documento.cuenta is None or documento.saldo_al_corte is None:
         return False
     cuenta = documento.cuenta
+    pagos_pendientes = documento.propuestas.filter(
+        estado=ESTADO.PENDIENTE, cuenta_destino=cuenta
+    ).exists()
+    mas_viejo = (
+        cuenta.fecha_saldo is not None
+        and documento.periodo_fin is not None
+        and documento.periodo_fin < cuenta.fecha_saldo
+    )
+    if pagos_pendientes or mas_viejo:
+        # El saldo al corte ya incluye esos pagos (RN-14 los descontaría otra vez) o es más viejo.
+        return False
     cuenta.saldo_actual = documento.saldo_al_corte
     cuenta.fecha_saldo = documento.periodo_fin or timezone.localdate()
     cuenta.save(update_fields=["saldo_actual", "fecha_saldo", "actualizado_en"])

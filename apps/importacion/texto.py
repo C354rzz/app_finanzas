@@ -14,10 +14,11 @@ from apps.importacion.errores import (
 
 MINIMO_CARACTERES = 20
 
-_CURP = re.compile(r"\b[A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d\b")
-_RFC = re.compile(r"\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b")
-_TARJETA = re.compile(r"\b(?:\d{4}[ -]){3}(\d{4})\b")
-_NUMERO_LARGO = re.compile(r"\b\d{6,}(\d{4})\b")
+# Sin \b al inicio: pypdf suele pegar la etiqueta al dato («RFCXAXX010101000»).
+_CURP = re.compile(r"[A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d(?![A-Z0-9])", re.IGNORECASE)
+_RFC = re.compile(r"[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}(?![A-Z0-9])", re.IGNORECASE)
+_TARJETA = re.compile(r"(?<!\d)(?:\d{4}[ -]){3}(\d{4})(?!\d)")
+_NUMERO_LARGO = re.compile(r"(?<!\d)\d{6,}(\d{4})(?!\d)")
 
 
 def extraer_texto(datos):

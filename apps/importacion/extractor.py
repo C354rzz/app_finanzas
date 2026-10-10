@@ -22,6 +22,8 @@ from apps.movimientos.models import TipoIngreso
 MODELO = "claude-opus-5-5"
 BETA_RESPALDO = "server-side-fallback-2026-07-01"
 MAX_TOKENS = 16000
+# Segundos por intento; con 2 reintentos queda por debajo del timeout de la tarea (900 s).
+TIEMPO_LIMITE_IA = 240
 MONTO_MAXIMO = Decimal("9999999999.99")
 # US$ por millón de tokens (entrada, salida) según el modelo que respondió.
 PRECIOS_POR_MILLON = {
@@ -273,7 +275,7 @@ class ExtractorClaude:
                     "Falta configurar la clave de la API de Claude (ANTHROPIC_API_KEY) en el "
                     "archivo .env."
                 )
-            self._cliente = anthropic.Anthropic()
+            self._cliente = anthropic.Anthropic(timeout=TIEMPO_LIMITE_IA, max_retries=2)
         return self._cliente
 
     def extraer(self, texto, catalogos):

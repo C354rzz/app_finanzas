@@ -140,7 +140,7 @@ def test_reintentar_no_aplica_a_documentos_procesados(cliente, hogar, encolados)
 
 
 def test_eliminar_conserva_los_movimientos(cliente, catalogo, hogar, crear_pdf):
-    documento, _ = documento_con_pdf(hogar, crear_pdf)
+    documento, _ = documento_con_pdf(hogar, crear_pdf, estado=Documento.Estado.CONFIRMADO)
     nombre = documento.archivo.name
     movimiento = guardar_movimiento(
         Movimiento(

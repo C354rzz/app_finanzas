@@ -18,6 +18,7 @@ PENDIENTE = MovimientoPropuesto.Estado.PENDIENTE
 
 
 def _lista(hogar):
+    servicios.marcar_atascados(hogar)
     documentos = list(
         Documento.objects.del_hogar(hogar)
         .annotate(pendientes=Count("propuestas", filter=Q(propuestas__estado=PENDIENTE)))
@@ -106,7 +107,11 @@ def reintentar(request, pk):
 @requiere_hogar
 @require_POST
 def eliminar(request, pk):
-    servicios.eliminar_documento(_documento(request, pk))
+    documento = _documento(request, pk)
+    if documento.estado in Documento.ESTADOS_EN_CURSO:
+        messages.error(request, "Espera a que termine de procesarse para eliminarlo.")
+        return redirect("importacion:importar")
+    servicios.eliminar_documento(documento)
     messages.success(request, "Se eliminó el documento; los movimientos aceptados se conservan.")
     return redirect("importacion:importar")
 
@@ -182,4 +187,10 @@ def actualizar_saldo(request, pk):
     documento = _documento(request, pk)
     if servicios.actualizar_saldo(documento):
         messages.success(request, f"Se actualizó el saldo de {documento.cuenta}.")
+    else:
+        messages.error(
+            request,
+            "No se actualizó el saldo: primero acepta o descarta los pagos a esta cuenta, "
+            "o el estado de cuenta es anterior al último saldo registrado.",
+        )
     return redirect("importacion:revisar", documento.pk)
