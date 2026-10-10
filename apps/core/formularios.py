@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.db.models import Q
 
+from apps.calculos.comun import redondear
 from apps.core.models import ModeloDeHogar
 
 
@@ -57,3 +60,20 @@ class FormularioEntrada(AuthenticationForm):
         label="Email",
         widget=forms.EmailInput(attrs={"autofocus": True, "autocomplete": "email"}),
     )
+
+
+class CampoPorcentaje(forms.DecimalField):
+    """Se captura y muestra en % (10 = 10 %); entrega la fracción (0.10)."""
+
+    def __init__(self, *, maximo=Decimal("100"), **kwargs):
+        kwargs.setdefault("decimal_places", 2)
+        super().__init__(min_value=Decimal("0"), max_value=maximo, **kwargs)
+
+    def prepare_value(self, value):
+        if isinstance(value, Decimal):
+            return redondear(value * 100)
+        return value
+
+    def clean(self, value):
+        porcentaje = super().clean(value)
+        return None if porcentaje is None else porcentaje / 100

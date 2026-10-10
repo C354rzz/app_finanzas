@@ -1,7 +1,10 @@
+from decimal import Decimal as D
+
 import pytest
+from django.core.exceptions import ValidationError
 
 from apps.catalogos.models import Categoria, Concepto, Persona
-from apps.core.formularios import FormularioDeHogar
+from apps.core.formularios import CampoPorcentaje, FormularioDeHogar
 
 pytestmark = pytest.mark.django_db
 
@@ -83,3 +86,21 @@ def test_error_de_un_campo_fuera_del_formulario_se_muestra_como_general(hogar, o
 
     assert not formulario.is_valid()
     assert "Pertenece a otro hogar." in str(formulario.non_field_errors())
+
+
+def test_campo_porcentaje_entrega_la_fraccion():
+    campo = CampoPorcentaje(required=False)
+
+    assert campo.clean("10") == D("0.1")
+    assert campo.clean("1.5") == D("0.015")
+    assert campo.clean("") is None
+    assert campo.prepare_value(D("0.2500")) == D("25.00")
+    assert campo.prepare_value("abc") == "abc"
+
+
+def test_campo_porcentaje_valida_en_porcentaje():
+    with pytest.raises(ValidationError):
+        CampoPorcentaje().clean("150")
+    with pytest.raises(ValidationError):
+        CampoPorcentaje().clean("-1")
+    assert CampoPorcentaje(maximo=D("1000")).clean("150") == D("1.5")

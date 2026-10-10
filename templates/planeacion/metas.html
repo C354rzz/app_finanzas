@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Metas de ahorro{% endblock %}
+{% block contenido %}
+<header class="mb-4 flex items-center justify-between gap-2">
+  <h1 class="text-lg font-semibold"><a class="text-slate-400" href="{% url 'catalogos:indice' %}">Más ›</a> Metas de ahorro</h1>
+  <button type="button" class="boton" hx-get="{% url 'planeacion:meta_nueva' %}" hx-target="#modal-contenido">+ Meta</button>
+</header>
+
+<section class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+  <div class="tarjeta"><p class="text-xs text-slate-500">Total de objetivos de ahorro al mes</p><p class="text-lg font-semibold">{{ metas.total_mensual|dinero }}</p></div>
+  <div class="tarjeta"><p class="text-xs text-slate-500">% de tus ingresos</p><p class="text-lg font-semibold">{{ metas.porcentaje_ingresos|porcentaje }}</p></div>
+  <div class="tarjeta"><p class="text-xs text-slate-500">Disponible al final del mes (presupuesto)</p><p class="text-lg font-semibold">{{ resumen.disponible|dinero }}</p></div>
+</section>
+<p class="mb-4 rounded-lg px-3 py-2 text-sm {% if metas.nivel == 'bien' %}bg-emerald-50 text-emerald-800{% elif metas.nivel == 'cuidado' %}bg-amber-50 text-amber-800{% else %}bg-red-50 text-red-700{% endif %}">{{ metas.mensaje }}</p>
+
+<section class="grid gap-3 sm:grid-cols-2">
+  {% for fila in metas.filas %}
+    <article class="tarjeta">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="text-xs text-slate-500">{{ fila.meta.get_tipo_display }}</p>
+          <h2 class="font-medium">{{ fila.meta.nombre }}</h2>
+        </div>
+        <div class="flex gap-3 text-xs">
+          <button type="button" class="text-sky-700" hx-get="{% url 'planeacion:meta_editar' fila.meta.pk %}" hx-target="#modal-contenido">Editar</button>
+          <button type="button" class="text-red-600" hx-post="{% url 'planeacion:meta_eliminar' fila.meta.pk %}" hx-confirm="¿Eliminar esta meta?">Eliminar</button>
+        </div>
+      </div>
+      <p class="mt-2 text-2xl font-semibold text-emerald-700">{{ fila.aporte|dinero }} <span class="text-sm font-normal text-slate-500">al mes</span></p>
+      <p class="text-xs text-slate-500">Meta {{ fila.meta.monto_objetivo|dinero }} · ahorro actual {{ fila.meta.ahorro_actual|dinero }} · {{ fila.meta.meses }} meses al {{ fila.meta.tasa_anual|porcentaje }} · termina en {{ fila.fecha_fin|date:"F Y" }}{% if fila.meta.cuenta %} · en {{ fila.meta.cuenta }}{% endif %}</p>
+    </article>
+  {% empty %}
+    <p class="tarjeta text-slate-500 sm:col-span-2">Aún no tienes metas de ahorro. Agrega la primera con «+ Meta».</p>
+  {% endfor %}
+</section>
+
+{% if pausadas %}
+  <section class="tarjeta mt-4">
+    <h2 class="mb-2 text-sm font-medium text-slate-500">Metas pausadas</h2>
+    <ul class="divide-y divide-slate-100 text-sm">
+      {% for meta in pausadas %}
+        <li class="flex justify-between py-1"><span>{{ meta }}</span><button type="button" class="text-xs text-sky-700" hx-get="{% url 'planeacion:meta_editar' meta.pk %}" hx-target="#modal-contenido">Editar</button></li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+{% endblock %}
