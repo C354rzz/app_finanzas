@@ -24,6 +24,104 @@ RENGLONES_EXCEL = {
     "Otros": [("300", "F"), ("500", "TH"), ("500", "TH")],
 }  # fmt: skip
 
+# Encabezados de categoría del Excel: (texto, categoría, fila, columna del nombre).
+BLOQUES_EXCEL = [
+    ("🏡Casa", "Casa", 21, 3),
+    ("🥑Comida", "Comida", 21, 9),
+    ("❤️Familia", "Familia", 21, 15),
+    ("🚓Transporte", "Transporte", 37, 3),
+    ("✈️Viajes", "Viajes", 37, 9),
+    ("🏦Deudas", "Deudas", 37, 15),
+    ("🚑Salud", "Salud", 53, 3),
+    ("📺Suscripciones", "Suscripciones", 53, 9),
+    ("🏦Gastos anuales", "Gastos anuales", 53, 15),
+    ("💅Cuidado personal", "Cuidado personal", 69, 3),
+    ("📽️Entretenimiento", "Entretenimiento", 69, 9),
+    ("🛸Otros", "Otros", 69, 15),
+]
+
+
+def _poner(hoja, fila, columna, *valores):
+    for desplazamiento, valor in enumerate(valores):
+        hoja.cell(fila, columna + desplazamiento, valor)
+
+
+def _excel_ficticio(ruta, modificar=None):
+    """Libro con el formato del «Financial Planner» y datos ficticios (de RENGLONES_EXCEL)."""
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = "Presupuesto"
+    hoja["C2"] = "Ingresos Promedio Mensual"
+    _poner(hoja, 3, 3, "Salario mensual (neto)", "Fijo", None, None, 32977.52)
+    _poner(hoja, 4, 3, "Bono", "Variable", None, None, 0)
+    _poner(hoja, 5, 3, "-", "-")
+    hoja["C14"], hoja["G14"] = "¿Qué % de tus ingresos quieres ahorrar?", 0.05
+    for encabezado, categoria, fila, columna in BLOQUES_EXCEL:
+        _poner(hoja, fila, columna, encabezado, "¿Gasto Fijo?", "¿Pago con tarjeta?",
+               "Gasto hormiga 🐜", "Monto mensual")  # fmt: skip
+        renglones = RENGLONES_EXCEL.get(categoria, [])
+        for numero, (monto, marcas) in enumerate(renglones, start=1):
+            _poner(hoja, fila + numero, columna, f"{categoria} {numero}", "F" in marcas,
+                   "T" in marcas, "H" in marcas, float(monto))  # fmt: skip
+        _poner(hoja, fila + len(renglones) + 1, columna, "-", False, False, False, 0)
+
+    deudas = libro.create_sheet("Deudas")
+    deudas["C1"] = "Tarjetas de Crédito"
+    _poner(deudas, 2, 3, "Banco", "Tarjeta", "Tasa promedio*", "Saldo Actual", "Línea de crédito")
+    formula = "=IFERROR(AVERAGEIFS('No borrar'!$H$2:$H$190,'No borrar'!$F$2:$F$190,C4),0)"
+    _poner(deudas, 3, 3, "Banco Demo", "Oro", 0.45, 6839.01, 7100, None, "No")
+    _poner(deudas, 4, 3, "Banco Demo", "Clásica", formula, 1000, 5000, None, "Sí")
+    _poner(deudas, 5, 3, "Otro", "Tarjeta", formula, 0, 0)
+    deudas["C15"] = "Créditos"
+    _poner(deudas, 16, 3, "Tipo de crédito", "Deuda inicial", "Deuda actual", "Mensualidad")
+    _poner(deudas, 17, 3, "Préstamo auto", 41130, 38679.72, 1500)
+    _poner(deudas, 18, 3, "-", 0, 0, 0)
+
+    metas = libro.create_sheet("Metas de Ahorro")
+    metas["C11"] = "¿Cuál es tu ahorro actual?"
+    for columna, nombre, actual, meses, tasa, meta in [
+        (3, "🎁Regalo", 0, 6, 0.10, 3000),
+        (7, "🏖️Vacaciones", 2000, 12, 0.05, 20000),
+        (11, "🚗Auto", 0, 12, 0.10, 0),
+        (15, "🎲Otros", None, None, None, None),
+    ]:
+        metas.cell(8, columna, nombre)
+        for fila, valor in zip((11, 12, 13, 14), (actual, meses, tasa, meta), strict=True):
+            metas.cell(fila, columna + 2, valor)
+
+    patrimonio = libro.create_sheet("Patrimonio")
+    patrimonio["C2"] = "Activos"
+    _poner(patrimonio, 3, 3, "Activo", None, "Nombre", None, "Valor actual")
+    activos = [
+        ("-", None, None),
+        ("🏡Casa/Departamento", "Casa ejemplo", 1500000),
+        ("🚗Auto", "Auto ejemplo", 150000),
+        ("💰Cuentas de Ahorro", "-", 25000),
+        ("-", "-", 0),
+    ]
+    for fila, (tipo, nombre, valor) in enumerate(activos, start=4):
+        _poner(patrimonio, fila, 3, tipo, None, nombre, None, valor)
+
+    tasas = libro.create_sheet("No borrar")
+    _poner(tasas, 1, 6, "Banco", "Tarjeta", "Tasa")
+    _poner(tasas, 2, 6, "Banco Demo", "Oro", 0.6904399999999999)
+    _poner(tasas, 3, 6, "Banco Demo", "Clásica", 0.73228)
+
+    if modificar:
+        modificar(libro)
+    libro.save(ruta)
+    return ruta
+
+
+@pytest.fixture
+def excel_ficticio(tmp_path):
+    def crear(modificar=None):
+        return _excel_ficticio(tmp_path / "planner.xlsx", modificar)
+
+    return crear
+
 
 @pytest.fixture
 def usuario(db):
