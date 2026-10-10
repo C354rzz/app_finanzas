@@ -1,6 +1,8 @@
 from django import forms
 
 from apps.catalogos.models import Cuenta
+from apps.core.formularios import FormularioDeHogar
+from apps.importacion.models import MovimientoPropuesto
 
 
 class EntradaDeVariosArchivos(forms.ClearableFileInput):
@@ -38,3 +40,20 @@ class FormularioSubida(forms.Form):
     def __init__(self, *args, hogar, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["cuenta"].queryset = Cuenta.objects.del_hogar(hogar).filter(activo=True)
+
+
+class FormularioPropuesta(FormularioDeHogar):
+    class Meta:
+        model = MovimientoPropuesto
+        fields = [
+            "fecha", "descripcion", "monto", "tipo", "tipo_ingreso", "es_extraordinario",
+            "metodo_pago", "concepto", "categoria", "cuenta", "cuenta_destino", "persona",
+            "domicilio", "es_hormiga",
+        ]  # fmt: skip
+        widgets = {"fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        concepto = self.fields["concepto"]
+        concepto.queryset = concepto.queryset.select_related("categoria")
+        concepto.label_from_instance = lambda c: c.nombre_con_categoria
