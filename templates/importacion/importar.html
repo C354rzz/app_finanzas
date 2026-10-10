@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Importar{% endblock %}
+{% block contenido %}
+<h1 class="mb-1 text-lg font-semibold">Importar documentos</h1>
+<p class="mb-4 text-sm text-slate-600">Sube estados de cuenta, recibos de nómina o recibos de luz, agua e internet en PDF (o un ZIP con PDFs). La IA propone los movimientos y tú los revisas antes de guardarlos.</p>
+
+<form method="post" enctype="multipart/form-data" class="tarjeta mb-4 space-y-3">
+  {% csrf_token %}
+  {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700">{{ formulario.non_field_errors }}</div>{% endif %}
+  {% for campo in formulario %}{% include "componentes/campo.html" %}{% endfor %}
+  <button class="boton w-full sm:w-auto">Subir y procesar</button>
+  <p class="text-xs text-slate-500">A la IA solo se envía el texto del documento, con RFC, CURP y números de cuenta ocultos. Costo de IA este mes: <strong>US${{ costo_mes }}</strong></p>
+</form>
+
+{% include "importacion/_documentos.html" %}
+{% endblock %}
