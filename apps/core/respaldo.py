@@ -9,13 +9,19 @@ Un respaldo es un ZIP con:
 import io
 import json
 import os
+import tempfile
 import zipfile
+import zlib
 from collections import Counter
-from pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
-from django.db import connection, transaction
+from django.core.serializers.base import DeserializationError
+from django.db import DatabaseError, connection, transaction
 from django.db.migrations.recorder import MigrationRecorder
 from django.utils import timezone
 
@@ -101,3 +107,101 @@ def rotar(carpeta, conservar):
     for viejo in borrados:
         viejo.unlink()
     return borrados
+
+
+@dataclass(frozen=True)
+class Restauracion:
+    registros: int
+    archivos: int
+    seguridad: Path | None
+
+
+def _ruta_permitida(nombre):
+    ruta = PurePosixPath(nombre)
+    return (
+        nombre.startswith("media/")
+        and not ruta.is_absolute()
+        and ".." not in ruta.parts
+        and "\\" not in nombre
+    )
+
+
+def leer_respaldo(ruta):
+    """Valida el ZIP y devuelve (manifiesto, datos_json, archivos) sin tocar nada."""
+    try:
+        respaldo = zipfile.ZipFile(ruta)
+    except (OSError, zipfile.BadZipFile) as error:
+        raise ErrorRespaldo(f"No se pudo abrir el respaldo: {error}") from error
+    with respaldo:
+        nombres = respaldo.namelist()
+        if "manifiesto.json" not in nombres or "datos.json" not in nombres:
+            raise ErrorRespaldo(
+                "El archivo no es un respaldo de Finanzas (le falta manifiesto.json o datos.json)."
+            )
+        medios = [n for n in nombres if n not in ("manifiesto.json", "datos.json")]
+        for nombre in medios:
+            if not _ruta_permitida(nombre):
+                raise ErrorRespaldo(f"El respaldo contiene una ruta no permitida: {nombre}")
+        try:
+            manifiesto = json.loads(respaldo.read("manifiesto.json"))
+            datos = respaldo.read("datos.json").decode("utf-8")
+            registros = json.loads(datos)
+            archivos = {
+                n.removeprefix("media/"): respaldo.read(n) for n in medios if not n.endswith("/")
+            }
+        except (zipfile.BadZipFile, ValueError, zlib.error, EOFError) as error:
+            raise ErrorRespaldo("El respaldo está dañado.") from error
+    if not isinstance(manifiesto, dict) or manifiesto.get("formato") != FORMATO:
+        raise ErrorRespaldo("El respaldo tiene un formato desconocido.")
+    if not isinstance(registros, list):
+        raise ErrorRespaldo("El respaldo está dañado.")
+    return manifiesto, datos, archivos
+
+
+def _validar_migraciones(manifiesto):
+    actuales = migraciones_aplicadas()
+    faltantes = [
+        f"{app}.{nombre}"
+        for app, nombres in (manifiesto.get("migraciones") or {}).items()
+        for nombre in nombres
+        if nombre not in actuales.get(app, [])
+    ]
+    if faltantes:
+        raise ErrorRespaldo(
+            "El respaldo es de una versión más nueva de la app (faltan migraciones: "
+            + ", ".join(faltantes[:5])
+            + "). Actualiza el código antes de restaurar."
+        )
+
+
+def _escribir_media(archivos):
+    raiz = Path(settings.MEDIA_ROOT)
+    for relativa, contenido in archivos.items():
+        destino = raiz / relativa
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_bytes(contenido)
+
+
+def restaurar_respaldo(ruta):
+    """Reemplaza TODOS los datos por los del respaldo. Si algo falla, la base queda igual."""
+    manifiesto, datos, archivos = leer_respaldo(ruta)
+    _validar_migraciones(manifiesto)
+    seguridad = None
+    if get_user_model().objects.exists():
+        seguridad = crear_respaldo(prefijo=f"{PREFIJO}antes-de-restaurar-")
+    with tempfile.TemporaryDirectory() as carpeta:
+        fixture = Path(carpeta) / "datos.json"  # loaddata reconoce el formato por la extensión
+        fixture.write_text(datos, encoding="utf-8")
+        try:
+            with transaction.atomic():
+                call_command("flush", interactive=False, verbosity=0)
+                call_command("loaddata", str(fixture), verbosity=0)
+        except (DatabaseError, DeserializationError, ValueError) as error:
+            raise ErrorRespaldo(
+                f"No se pudo cargar el respaldo; no se cambió nada. Detalle: {error}"
+            ) from error
+    ContentType.objects.clear_cache()  # flush recreó los tipos de contenido con otros ids
+    _escribir_media(archivos)
+    return Restauracion(
+        registros=len(json.loads(datos)), archivos=len(archivos), seguridad=seguridad
+    )
