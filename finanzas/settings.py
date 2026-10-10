@@ -85,6 +85,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Respaldos (RF-DAT-01). En Docker es /respaldos, montada desde CARPETA_RESPALDOS del .env.
+RESPALDOS_DIR = Path(env("RESPALDOS_DIR", default=str(BASE_DIR / "respaldos")))
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},

@@ -135,6 +135,12 @@ def media_temporal(settings, tmp_path):
     settings.MEDIA_ROOT = tmp_path / "media"
 
 
+@pytest.fixture(autouse=True)
+def respaldos_temporales(settings, tmp_path):
+    """Los respaldos de las pruebas van a una carpeta temporal."""
+    settings.RESPALDOS_DIR = tmp_path / "respaldos"
+
+
 def _pdf_minimo(paginas):
     """PDF válido con una página por texto (Helvetica, WinAnsi). Solo para pruebas."""
 

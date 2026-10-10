@@ -27,8 +27,11 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    environment:
+      RESPALDOS_DIR: /respaldos
     volumes:
       - media:/app/media
+      - ${CARPETA_RESPALDOS:-./respaldos}:/respaldos
 
   worker:
     build:
