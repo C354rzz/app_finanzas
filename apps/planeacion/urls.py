@@ -14,4 +14,7 @@ urlpatterns = [
     path("patrimonio/nuevo/", vistas.activo_nuevo, name="activo_nuevo"),
     path("patrimonio/<int:pk>/", vistas.activo_editar, name="activo_editar"),
     path("patrimonio/<int:pk>/eliminar/", vistas.activo_eliminar, name="activo_eliminar"),
+    path("simulador/", vistas.simulador, name="simulador"),
+    path("simulador/guardar/", vistas.simulacion_guardar, name="simulacion_guardar"),
+    path("simulador/<int:pk>/eliminar/", vistas.simulacion_eliminar, name="simulacion_eliminar"),
 ]

@@ -1,12 +1,20 @@
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core.acceso import requiere_hogar
 from apps.core.htmx import datos_actualizados, es_htmx, responder_formulario
-from apps.planeacion.formularios import FormularioActivo, FormularioMeta
-from apps.planeacion.models import Activo, MetaAhorro
-from apps.planeacion.servicios import calcular_patrimonio, resumir_metas, vista_deudas
+from apps.planeacion.formularios import FormularioActivo, FormularioMeta, FormularioSimulador
+from apps.planeacion.models import Activo, MetaAhorro, SimulacionCredito
+from apps.planeacion.servicios import (
+    calcular_patrimonio,
+    datos_de_simulacion,
+    guardar_simulacion,
+    resumir_metas,
+    vista_deudas,
+)
 from apps.presupuesto.servicios import obtener_presupuesto_mes, resumen_mes
 
 
@@ -93,3 +101,44 @@ def activo_editar(request, pk):
 @require_POST
 def activo_eliminar(request, pk):
     return _eliminar(request, Activo, pk, "planeacion:patrimonio")
+
+
+@requiere_hogar
+def simulador(request):
+    simulacion = None
+    valor = request.GET.get("simulacion", "")
+    if valor.isdigit():
+        simulacion = get_object_or_404(SimulacionCredito.objects.del_hogar(request.hogar), pk=valor)
+        formulario = FormularioSimulador(datos_de_simulacion(simulacion))
+    else:
+        formulario = FormularioSimulador(request.GET or None)
+    valido = formulario.is_bound and formulario.is_valid()
+    contexto = {
+        "formulario": formulario,
+        "amortizacion": formulario.amortizacion if valido else None,
+        "simulacion": simulacion,
+        "guardadas": SimulacionCredito.objects.del_hogar(request.hogar),
+    }
+    return render(request, "planeacion/simulador.html", contexto)
+
+
+@requiere_hogar
+@require_POST
+def simulacion_guardar(request):
+    formulario = FormularioSimulador(request.POST)
+    if formulario.is_valid() and formulario.cleaned_data["nombre"]:
+        simulacion = guardar_simulacion(request.hogar, formulario)
+        messages.success(request, f"Se guardó la simulación «{simulacion}».")
+        return redirect(f"{reverse('planeacion:simulador')}?simulacion={simulacion.pk}")
+    messages.error(request, "Para guardar la simulación escribe un nombre y revisa los datos.")
+    consulta = request.POST.copy()
+    consulta.pop("csrfmiddlewaretoken", None)
+    return redirect(f"{reverse('planeacion:simulador')}?{consulta.urlencode()}")
+
+
+@requiere_hogar
+@require_POST
+def simulacion_eliminar(request, pk):
+    get_object_or_404(SimulacionCredito.objects.del_hogar(request.hogar), pk=pk).delete()
+    messages.success(request, "Se eliminó la simulación.")
+    return redirect("planeacion:simulador")

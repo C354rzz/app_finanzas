@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Simulador de créditos{% endblock %}
+{% block contenido %}
+<h1 class="mb-1 text-lg font-semibold"><a class="text-slate-400" href="{% url 'catalogos:indice' %}">Más ›</a> Simulador de créditos</h1>
+<p class="mb-4 text-sm text-slate-600">¿Quieres saber si un crédito te conviene? Pruébalo antes de tomar una decisión.</p>
+
+<form method="get" action="{% url 'planeacion:simulador' %}" class="tarjeta mb-4 grid gap-3 sm:grid-cols-2">
+  {% if formulario.non_field_errors %}<div class="rounded bg-red-50 p-2 text-sm text-red-700 sm:col-span-2">{{ formulario.non_field_errors }}</div>{% endif %}
+  {% for campo in formulario %}
+    {% if campo.name != "nombre" %}
+      <div {% if campo.name == "pagos_anticipados" %}class="sm:col-span-2"{% endif %}>{% include "componentes/campo.html" %}</div>
+    {% endif %}
+  {% endfor %}
+  <div class="sm:col-span-2"><button class="boton">Calcular</button></div>
+</form>
+
+{% if amortizacion %}
+  <section class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div class="tarjeta"><p class="text-xs text-slate-500">Crédito con comisión</p><p class="font-semibold">{{ amortizacion.capital_inicial|dinero }}</p></div>
+    <div class="tarjeta"><p class="text-xs text-slate-500">Tasa efectiva mensual</p><p class="font-semibold">{{ amortizacion.tasa_mensual|porcentaje }}</p></div>
+    <div class="tarjeta"><p class="text-xs text-slate-500">Mensualidad a pagar</p><p class="font-semibold">{{ amortizacion.mensualidad|dinero }}</p></div>
+    <div class="tarjeta"><p class="text-xs text-slate-500">Total de intereses</p><p class="font-semibold text-red-600">{{ amortizacion.total_intereses|dinero }}</p></div>
+  </section>
+
+  <form method="post" action="{% url 'planeacion:simulacion_guardar' %}" class="tarjeta mb-4 flex flex-wrap items-end gap-3">
+    {% csrf_token %}
+    {% for campo in formulario %}
+      {% if campo.name == "pagos_anticipados" %}
+        <textarea name="pagos_anticipados" hidden>{{ campo.value|default_if_none:"" }}</textarea>
+      {% elif campo.name != "nombre" %}
+        <input type="hidden" name="{{ campo.name }}" value="{{ campo.value|default_if_none:'' }}">
+      {% endif %}
+    {% endfor %}
+    <div class="min-w-48 grow">{% include "componentes/campo.html" with campo=formulario.nombre %}</div>
+    <button class="boton-secundario">Guardar simulación</button>
+  </form>
+
+  <section class="tarjeta overflow-x-auto">
+    <table class="w-full min-w-[640px] text-right text-sm">
+      <thead class="text-xs text-slate-500">
+        <tr><th class="text-left">Mes</th><th>Mensualidad</th><th>Intereses</th><th>Capital</th><th>Saldo final</th><th>Capital acumulado</th><th>Pago anticipado</th></tr>
+      </thead>
+      <tbody>
+        {% for fila in amortizacion.filas %}
+          <tr class="border-t border-slate-100">
+            <td class="text-left">{{ fila.mes }}</td>
+            <td>{{ fila.mensualidad|dinero }}</td>
+            <td>{{ fila.intereses|dinero }}</td>
+            <td>{{ fila.capital|dinero }}</td>
+            <td>{{ fila.saldo_final|dinero }}</td>
+            <td>{{ fila.capital_acumulado|dinero }}</td>
+            <td>{% if fila.pago_anticipado %}{{ fila.pago_anticipado|dinero }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endif %}
+
+<section class="tarjeta mt-4">
+  <h2 class="mb-2 font-medium">Simulaciones guardadas</h2>
+  <ul class="divide-y divide-slate-100 text-sm">
+    {% for guardada in guardadas %}
+      <li class="flex items-center justify-between py-2">
+        <a class="text-sky-700 {% if guardada == simulacion %}font-semibold{% endif %}" href="{% url 'planeacion:simulador' %}?simulacion={{ guardada.pk }}">{{ guardada.nombre }}</a>
+        <form method="post" action="{% url 'planeacion:simulacion_eliminar' guardada.pk %}" onsubmit="return confirm('¿Eliminar esta simulación?')">{% csrf_token %}<button class="text-xs text-red-600">Eliminar</button></form>
+      </li>
+    {% empty %}
+      <li class="py-2 text-slate-500">Aún no guardas simulaciones.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

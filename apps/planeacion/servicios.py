@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 
-from apps.calculos.comun import CERO
+from apps.calculos.comun import CERO, redondear
 from apps.calculos.deudas import (
     TarjetaCredito,
     nivel_de_uso,
@@ -18,7 +18,7 @@ from apps.core.fechas import sumar_meses
 from apps.movimientos.consultas import Filtros, movimientos_del_mes, totales
 from apps.movimientos.models import MetodoPago, Movimiento
 from apps.planeacion.mensajes import mensaje_metas, mensaje_tarjeta, mensaje_uso
-from apps.planeacion.models import Activo, MetaAhorro
+from apps.planeacion.models import Activo, MetaAhorro, SimulacionCredito
 from apps.presupuesto.servicios import obtener_presupuesto_mes, resumen_mes
 
 
@@ -150,3 +150,36 @@ def calcular_patrimonio(hogar):
         deuda_tarjetas=deudas.total_tarjetas,
         neto=patrimonio_neto([total], [deudas.total_creditos], [deudas.total_tarjetas]),
     )
+
+
+def guardar_simulacion(hogar, formulario):
+    """RF-SIM-03: guarda los datos de un FormularioSimulador válido."""
+    datos = formulario.cleaned_data
+    simulacion = SimulacionCredito(
+        hogar=hogar,
+        nombre=datos["nombre"],
+        monto=datos["monto"],
+        tasa_anual=datos["tasa_anual"],
+        meses=datos["meses"],
+        comision_apertura=datos["comision_apertura"] or CERO,
+        pagos_anticipados={
+            str(mes): str(monto) for mes, monto in datos["pagos_anticipados"].items()
+        },
+    )
+    simulacion.full_clean()
+    simulacion.save()
+    return simulacion
+
+
+def datos_de_simulacion(simulacion):
+    """Datos para volver a abrir una simulación guardada en el formulario."""
+    return {
+        "nombre": simulacion.nombre,
+        "monto": str(simulacion.monto),
+        "tasa_anual": str(redondear(simulacion.tasa_anual * 100)),
+        "meses": str(simulacion.meses),
+        "comision_apertura": str(redondear(simulacion.comision_apertura * 100)),
+        "pagos_anticipados": "\n".join(
+            f"{mes}={monto}" for mes, monto in sorted(simulacion.anticipados().items())
+        ),
+    }
