@@ -23,6 +23,8 @@ def capturar(request, tipo):
         raise Http404("Tipo de movimiento desconocido")
     datos = request.POST if request.method == "POST" else None
     formulario = Formulario(datos, hogar=request.hogar)
+    if datos is None:
+        _precargar_destino(formulario, request.GET.get("cuenta_destino", ""))
     if datos is not None and formulario.is_valid():
         movimiento = guardar_movimiento(formulario.save(commit=False), usuario=request.user)
         return _guardado(request, movimiento)
@@ -160,3 +162,10 @@ def exportar_csv(request, anio, mes=None):
             ]  # fmt: skip
         )
     return respuesta
+
+
+def _precargar_destino(formulario, valor):
+    """RF-DEU-05: abrir el pago de deuda con la tarjeta o préstamo ya elegido."""
+    campo = formulario.fields.get("cuenta_destino")
+    if campo is not None and valor.isdigit() and campo.queryset.filter(pk=valor).exists():
+        formulario.initial["cuenta_destino"] = int(valor)

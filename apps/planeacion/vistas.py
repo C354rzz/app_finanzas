@@ -6,7 +6,7 @@ from apps.core.acceso import requiere_hogar
 from apps.core.htmx import datos_actualizados, es_htmx, responder_formulario
 from apps.planeacion.formularios import FormularioMeta
 from apps.planeacion.models import MetaAhorro
-from apps.planeacion.servicios import resumir_metas
+from apps.planeacion.servicios import resumir_metas, vista_deudas
 from apps.presupuesto.servicios import obtener_presupuesto_mes, resumen_mes
 
 
@@ -56,3 +56,14 @@ def meta_editar(request, pk):
 @require_POST
 def meta_eliminar(request, pk):
     return _eliminar(request, MetaAhorro, pk, "planeacion:metas")
+
+
+@requiere_hogar
+def deudas(request):
+    hoy = timezone.localdate()
+    vista = vista_deudas(request.hogar, hoy.year, hoy.month)
+    contexto = {
+        "deudas": vista,
+        "total_deudas": vista.resumen.total_tarjetas + vista.resumen.total_creditos,
+    }
+    return render(request, "planeacion/deudas.html", contexto)
