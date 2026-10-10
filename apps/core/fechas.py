@@ -35,3 +35,10 @@ def mes_siguiente(anio, mes):
 
 def nombre_mes(anio, mes):
     return f"{MESES[mes - 1].capitalize()} {anio}"
+
+
+def sumar_meses(fecha, meses):
+    """Misma fecha `meses` después; el día se ajusta al último del mes si no existe."""
+    total = fecha.month - 1 + meses
+    anio, mes = fecha.year + total // 12, total % 12 + 1
+    return date(anio, mes, min(fecha.day, calendar.monthrange(anio, mes)[1]))

@@ -10,6 +10,15 @@
     {% endfor %}
   </ul>
 </section>
+<section class="tarjeta mb-4">
+  <h2 class="mb-2 font-medium">Planeación</h2>
+  <ul class="divide-y divide-slate-100">
+    <li><a class="block py-2 text-sky-700" href="{% url 'planeacion:metas' %}">🎯 Metas de ahorro</a></li>
+    <li><a class="block py-2 text-sky-700" href="{% url 'planeacion:deudas' %}">💳 Deudas</a></li>
+    <li><a class="block py-2 text-sky-700" href="{% url 'planeacion:patrimonio' %}">🏛️ Patrimonio</a></li>
+    <li><a class="block py-2 text-sky-700" href="{% url 'planeacion:simulador' %}">🧾 Simulador de créditos</a></li>
+  </ul>
+</section>
 <section class="tarjeta space-y-2">
   <a class="block text-sky-700" href="{% url 'presupuesto:plantilla' %}">Plantilla de presupuesto</a>
   {% if user.is_staff %}<a class="block text-sky-700" href="{% url 'admin:index' %}">Administración avanzada</a>{% endif %}

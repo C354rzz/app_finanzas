@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Deudas{% endblock %}
+{% block contenido %}
+<header class="mb-4 flex items-center justify-between gap-2">
+  <h1 class="text-lg font-semibold"><a class="text-slate-400" href="{% url 'catalogos:indice' %}">Más ›</a> Deudas</h1>
+  <a class="boton-secundario text-sm" href="{% url 'catalogos:lista' 'cuentas' %}">Editar cuentas</a>
+</header>
+
+<section class="tarjeta mb-4">
+  <h2 class="mb-2 font-medium">💳 Tarjetas de crédito</h2>
+  {% for fila in deudas.tarjetas %}
+    <article class="border-t border-slate-100 py-3 first:border-t-0">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="font-medium">{{ fila.cuenta }}</p>
+          <p class="text-xs text-slate-500">{{ fila.cuenta.institucion|default:"—" }} · {{ fila.cuenta.producto|default:"—" }} · tasa {{ fila.tasa|porcentaje }}{% if fila.tasa_de_mercado %}*{% endif %}</p>
+        </div>
+        <button type="button" class="boton-secundario text-xs" hx-get="{% url 'movimientos:capturar' 'pago_deuda' %}?cuenta_destino={{ fila.cuenta.pk }}" hx-target="#modal-contenido">Registrar pago</button>
+      </div>
+      <p class="mt-1 text-sm">Saldo {{ fila.cuenta.saldo_actual|dinero }} de {{ fila.cuenta.linea_credito|dinero }} · uso <span class="font-semibold {% if fila.nivel == 'riesgo' %}text-red-600{% elif fila.nivel == 'cuidado' %}text-amber-600{% else %}text-emerald-700{% endif %}">{{ fila.uso|porcentaje }}</span></p>
+      {% if fila.mensaje %}<p class="text-xs text-slate-600">{{ fila.mensaje }}</p>{% endif %}
+    </article>
+  {% empty %}
+    <p class="text-sm text-slate-500">No tienes tarjetas de crédito registradas.</p>
+  {% endfor %}
+  {% if deudas.tarjetas %}
+    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-slate-200 pt-3 text-sm">
+      <dt>Saldo total</dt><dd class="text-right">{{ deudas.resumen.total_tarjetas|dinero }}</dd>
+      <dt>% de uso de tu línea de crédito</dt><dd class="text-right">{{ deudas.resumen.uso|porcentaje }}</dd>
+      <dt>Gasto con tarjeta según tu presupuesto</dt><dd class="text-right">{{ deudas.gasto_tarjeta_presupuesto|dinero }}</dd>
+      <dt>Gasto real con tarjeta este mes</dt><dd class="text-right">{{ deudas.gasto_tarjeta_real|dinero }}</dd>
+    </dl>
+    {% if deudas.mensaje_uso %}<p class="mt-2 text-sm">{{ deudas.mensaje_uso }}</p>{% endif %}
+    <p class="mt-2 text-xs text-slate-500">* Tasa promedio del mercado para esa tarjeta; la tuya puede variar.</p>
+  {% endif %}
+</section>
+
+<section class="tarjeta mb-4">
+  <h2 class="mb-2 font-medium">🏦 Créditos</h2>
+  {% for fila in deudas.creditos %}
+    <article class="border-t border-slate-100 py-3 first:border-t-0">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <p class="font-medium">{{ fila.cuenta }}</p>
+          <p class="text-xs text-slate-500">Deuda inicial {{ fila.cuenta.monto_inicial|dinero }} · actual {{ fila.cuenta.saldo_actual|dinero }} · mensualidad {{ fila.cuenta.mensualidad|dinero }}</p>
+        </div>
+        <button type="button" class="boton-secundario text-xs" hx-get="{% url 'movimientos:capturar' 'pago_deuda' %}?cuenta_destino={{ fila.cuenta.pk }}" hx-target="#modal-contenido">Registrar pago</button>
+      </div>
+      <div class="mt-2 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-emerald-500" style="width: {{ fila.completado|ancho_barra }}%"></div></div>
+      <p class="text-xs text-slate-500">{{ fila.completado|porcentaje }} completado</p>
+    </article>
+  {% empty %}
+    <p class="text-sm text-slate-500">No tienes créditos registrados.</p>
+  {% endfor %}
+  {% if deudas.creditos %}
+    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-slate-200 pt-3 text-sm">
+      <dt>Deuda total en créditos</dt><dd class="text-right">{{ deudas.resumen.total_creditos|dinero }}</dd>
+      <dt>Suma de mensualidades</dt><dd class="text-right">{{ deudas.resumen.mensualidades|dinero }}</dd>
+    </dl>
+  {% endif %}
+</section>
+
+<p class="tarjeta text-sm">Total de tus deudas: <strong>{{ total_deudas|dinero }}</strong></p>
+{% endblock %}

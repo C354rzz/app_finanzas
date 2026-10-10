@@ -34,6 +34,6 @@ Luego entra a http://localhost:8000 con tu email y contraseña:
 - **+**: registra un gasto, ingreso (aguinaldo, PTU…), transferencia o pago de deuda.
 - **Movimientos**: lista del mes con filtros, totales y exportación a CSV.
 - **Presupuesto**: plantilla base y ajustes de cada mes.
-- **Más**: personas, domicilios, categorías, conceptos y cuentas.
+- **Más**: catálogos (personas, domicilios, categorías, conceptos y cuentas) y planeación: metas de ahorro, deudas (con «Registrar pago»), patrimonio y simulador de créditos.
 
 Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).

@@ -8,6 +8,7 @@ from apps.core.fechas import (
     nombre_mes,
     rango_del_anio,
     rango_del_mes,
+    sumar_meses,
     validar_mes,
 )
 
@@ -35,3 +36,10 @@ def test_nombre_del_mes():
 def test_mes_fuera_de_rango(anio, mes):
     with pytest.raises(ValueError):
         validar_mes(anio, mes)
+
+
+def test_sumar_meses():
+    assert sumar_meses(date(2026, 10, 9), 12) == date(2027, 10, 9)
+    assert sumar_meses(date(2026, 11, 15), 3) == date(2027, 2, 15)
+    assert sumar_meses(date(2026, 1, 31), 1) == date(2026, 2, 28)
+    assert sumar_meses(date(2026, 3, 1), 0) == date(2026, 3, 1)
