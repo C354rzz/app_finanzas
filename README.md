@@ -69,3 +69,14 @@ La app solo responde mientras la PC está encendida. Sin conexión verás el avi
 - Un estado de cuenta típico cuesta unos centavos de dólar; el costo del mes aparece en la pantalla Importar.
 - El contenedor `worker` procesa los documentos. Si cambias código de importación: `docker compose restart worker`.
 - Un PDF escaneado (sin texto) queda en error: la v1 no tiene OCR.
+
+## Respaldos
+
+Cada respaldo es un ZIP con la base de datos y los PDFs importados. Contiene tus datos personales: guárdalo en una carpeta privada.
+
+1. En `.env`, elige la carpeta (de preferencia dentro de OneDrive y fuera de este repositorio), por ejemplo `CARPETA_RESPALDOS=C:/Users/tu-usuario/OneDrive/Respaldos/finanzas`, y reinicia: `docker compose up -d` (o el comando de uso diario).
+2. Respaldo manual: `powershell -ExecutionPolicy Bypass -File scripts\respaldar.ps1`. El resultado queda en `respaldos.log`.
+3. Respaldo diario automático (una sola vez): `powershell -ExecutionPolicy Bypass -File scripts\programar_respaldo.ps1 -Hora 21:00`. Se conservan los 30 más recientes.
+4. Restaurar: `powershell -ExecutionPolicy Bypass -File scripts\restaurar.ps1 finanzas-AAAAMMDD-HHMMSS.zip` (pide escribir `RESTAURAR`). Antes de reemplazar, guarda un respaldo `finanzas-antes-de-restaurar-…` de los datos actuales. Si el respaldo está dañado o es de una versión más nueva de la app, no cambia nada.
+
+En una PC nueva: instala Docker, clona el repositorio, crea `.env`, levanta la app y restaura el último respaldo (no hace falta `crear_hogar`).
