@@ -2,7 +2,7 @@
 {% block titulo %}Importar{% endblock %}
 {% block contenido %}
 <h1 class="mb-1 text-lg font-semibold">Importar documentos</h1>
-<p class="mb-4 text-sm text-slate-600">Sube estados de cuenta, recibos de nómina o recibos de luz, agua e internet en PDF (o un ZIP con PDFs). La IA propone los movimientos y tú los revisas antes de guardarlos.</p>
+<p class="mb-4 text-sm text-slate-600">Sube en PDF (o en un ZIP) los estados de cuenta de tus tarjetas y cuentas, y tus recibos de nómina. La IA propone todos los movimientos y tú los revisas antes de guardarlos. Los recibos de luz, agua o internet no se registran como gasto: el pago entra cuando aparece en el estado de cuenta.</p>
 
 <form method="post" enctype="multipart/form-data" class="tarjeta mb-4 space-y-3">
   {% csrf_token %}

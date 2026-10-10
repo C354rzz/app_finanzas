@@ -236,6 +236,15 @@ def _guardar_resultado(documento, catalogo, resultado):
     )
     documento.error = ""
     documento.propuestas.all().delete()
+    if documento.tipo == Documento.Tipo.RECIBO_SERVICIO:
+        # Un recibo no prueba el pago: el gasto entra con el estado de cuenta o a mano.
+        documento.aviso = (
+            "Los recibos de servicio no se registran como gasto: el pago entrará cuando aparezca "
+            "en tu estado de cuenta (o captúralo a mano si pagaste en efectivo)."
+        )
+        documento.estado = Documento.Estado.DESCARTADO
+        documento.save(force_update=True)
+        return
     for movimiento in resultado.movimientos:
         _crear_propuesta(documento, catalogo, movimiento)
     documento.estado = Documento.Estado.POR_REVISAR

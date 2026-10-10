@@ -43,12 +43,13 @@ al corte (solo estados de cuenta) y los movimientos:
 - Montos siempre positivos; el tipo da el sentido: gasto (compra, cargo, retiro, comisión), \
 ingreso (depósito, abono, nómina, reembolso), pago_deuda (pago a una tarjeta o crédito) o \
 transferencia (entre cuentas propias).
-- Estado de cuenta: un movimiento por cada operación del periodo; sin saldos, totales ni resúmenes.
+- Estado de cuenta: un movimiento por cada operación del periodo, sin omitir ninguno; sin \
+saldos, totales ni resúmenes.
 - Recibo de nómina: un ingreso con tipo_ingreso «salario» por el neto pagado menos las \
 percepciones extraordinarias, con el periodo en la descripción; cada percepción extraordinaria \
 (aguinaldo, ptu, bono) es otro ingreso con su tipo_ingreso y es_extraordinario = true.
-- Recibo de servicio: un solo gasto por el total a pagar con la fecha límite de pago; elige el \
-concepto del servicio y el domicilio cuya dirección coincida con la del recibo.
+- Recibo de servicio: no registres movimientos (un recibo no prueba el pago; el cargo llegará en \
+el estado de cuenta). Devuelve solo el tipo de documento, el emisor y el periodo.
 - categoria, concepto, persona y domicilio: copia exactamente un nombre de los catálogos, o "" si \
 ninguno aplica. No inventes nombres.
 - confianza: de 0 a 1, qué tan seguro estás de la clasificación del movimiento.

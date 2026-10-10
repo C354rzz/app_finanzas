@@ -305,3 +305,20 @@ def test_tarea_del_worker(catalogo, documento_pdf, usar_extractor):
 
     documento.refresh_from_db()
     assert documento.estado == Documento.Estado.POR_REVISAR
+
+
+def test_un_recibo_de_servicio_no_genera_gasto(catalogo, documento_pdf, usar_extractor):
+    usar_extractor(
+        resultado(
+            [movimiento_ia(descripcion="CFE TOTAL A PAGAR", monto=450)],
+            tipo_documento="recibo_servicio",
+            emisor="CFE",
+        )
+    )
+
+    documento = procesar(documento_pdf(TEXTO))
+
+    assert documento.estado == Documento.Estado.DESCARTADO
+    assert documento.propuestas.count() == 0
+    assert "estado de cuenta" in documento.aviso
+    assert documento.costo_estimado_usd == D("0.0800")

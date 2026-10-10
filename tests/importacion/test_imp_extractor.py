@@ -200,3 +200,10 @@ def test_sin_clave_de_api(monkeypatch):
 
     with pytest.raises(ErrorExtraccion, match="ANTHROPIC_API_KEY"):
         ExtractorClaude().extraer("texto", {})
+
+
+def test_instrucciones_para_recibos_y_estados_de_cuenta():
+    from apps.importacion.extractor import INSTRUCCIONES
+
+    assert "Recibo de servicio: no registres movimientos" in INSTRUCCIONES
+    assert "sin omitir ninguno" in INSTRUCCIONES
