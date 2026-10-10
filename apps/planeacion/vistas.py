@@ -4,9 +4,9 @@ from django.views.decorators.http import require_POST
 
 from apps.core.acceso import requiere_hogar
 from apps.core.htmx import datos_actualizados, es_htmx, responder_formulario
-from apps.planeacion.formularios import FormularioMeta
-from apps.planeacion.models import MetaAhorro
-from apps.planeacion.servicios import resumir_metas, vista_deudas
+from apps.planeacion.formularios import FormularioActivo, FormularioMeta
+from apps.planeacion.models import Activo, MetaAhorro
+from apps.planeacion.servicios import calcular_patrimonio, resumir_metas, vista_deudas
 from apps.presupuesto.servicios import obtener_presupuesto_mes, resumen_mes
 
 
@@ -67,3 +67,29 @@ def deudas(request):
         "total_deudas": vista.resumen.total_tarjetas + vista.resumen.total_creditos,
     }
     return render(request, "planeacion/deudas.html", contexto)
+
+
+@requiere_hogar
+def patrimonio(request):
+    contexto = {
+        "patrimonio": calcular_patrimonio(request.hogar),
+        "no_vigentes": Activo.objects.del_hogar(request.hogar).filter(activo=False),
+    }
+    return render(request, "planeacion/patrimonio.html", contexto)
+
+
+@requiere_hogar
+def activo_nuevo(request):
+    return _editar(request, FormularioActivo, None, "planeacion:patrimonio", "Nuevo activo")
+
+
+@requiere_hogar
+def activo_editar(request, pk):
+    activo = get_object_or_404(Activo.objects.del_hogar(request.hogar), pk=pk)
+    return _editar(request, FormularioActivo, activo, "planeacion:patrimonio", "Editar activo")
+
+
+@requiere_hogar
+@require_POST
+def activo_eliminar(request, pk):
+    return _eliminar(request, Activo, pk, "planeacion:patrimonio")
