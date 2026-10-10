@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import anthropic
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Sum
@@ -20,12 +21,13 @@ from apps.importacion.clasificacion import (
     buscar_duplicado,
     buscar_regla,
     normalizar,
+    patron_sugerido,
 )
 from apps.importacion.errores import ErrorImportacion
-from apps.importacion.models import Documento, MovimientoPropuesto
+from apps.importacion.models import Documento, MovimientoPropuesto, ReglaClasificacion
 from apps.importacion.texto import extraer_texto, proteger_datos
 from apps.movimientos.models import TIPOS_DEUDA, MetodoPago, Movimiento, TipoIngreso
-from apps.movimientos.servicios import metodo_para_cuenta
+from apps.movimientos.servicios import guardar_movimiento, metodo_para_cuenta
 
 logger = logging.getLogger(__name__)
 
@@ -270,3 +272,123 @@ def _metodo(tipo, cuenta):
     if tipo != Movimiento.Tipo.GASTO:
         return MetodoPago.TRANSFERENCIA
     return metodo_para_cuenta(cuenta)
+
+
+ESTADO = MovimientoPropuesto.Estado
+
+
+def aceptar_propuesta(propuesta, usuario=None, recordar=False):
+    """IMP-09: crea el movimiento importado. Si no es válido, guarda el error y lo relanza."""
+    if propuesta.estado != ESTADO.PENDIENTE:
+        raise ValidationError("Esta propuesta ya se revisó.")
+    movimiento = _movimiento_de(propuesta)
+    try:
+        movimiento.full_clean()
+    except ValidationError as error:
+        propuesta.error = "No se pudo aceptar: " + " ".join(error.messages)
+        propuesta.save(update_fields=["error", "actualizado_en"])
+        raise
+    with transaction.atomic():
+        bloqueada = MovimientoPropuesto.objects.select_for_update().get(pk=propuesta.pk)
+        if bloqueada.estado != ESTADO.PENDIENTE:
+            raise ValidationError("Esta propuesta ya se revisó.")
+        guardar_movimiento(movimiento, usuario=usuario)
+        propuesta.estado = ESTADO.ACEPTADO
+        propuesta.movimiento = movimiento
+        propuesta.error = ""
+        propuesta.save()
+        if recordar:
+            recordar_clasificacion(propuesta)
+        actualizar_estado_documento(propuesta.documento)
+    return movimiento
+
+
+def _movimiento_de(propuesta):
+    return Movimiento(
+        hogar=propuesta.hogar,
+        fecha=propuesta.fecha,
+        tipo=propuesta.tipo,
+        monto=propuesta.monto,
+        descripcion=propuesta.descripcion,
+        categoria=propuesta.categoria,
+        concepto=propuesta.concepto,
+        tipo_ingreso=propuesta.tipo_ingreso,
+        es_extraordinario=propuesta.es_extraordinario,
+        metodo_pago=propuesta.metodo_pago,
+        cuenta=propuesta.cuenta,
+        cuenta_destino=propuesta.cuenta_destino,
+        persona=propuesta.persona,
+        domicilio=propuesta.domicilio,
+        es_hormiga=propuesta.es_hormiga,
+        origen=Movimiento.Origen.IMPORTADO,
+        documento=propuesta.documento,
+    )
+
+
+def recordar_clasificacion(propuesta):
+    """IMP-09: «recordar esta clasificación» crea o actualiza una regla del hogar."""
+    patron = patron_sugerido(propuesta.descripcion_original)
+    if not patron:
+        return None
+    regla, _ = ReglaClasificacion.objects.update_or_create(
+        hogar=propuesta.hogar,
+        patron=patron,
+        emisor=propuesta.documento.emisor,
+        defaults={
+            "categoria": propuesta.categoria,
+            "concepto": propuesta.concepto,
+            "persona": propuesta.persona,
+            "domicilio": propuesta.domicilio,
+            "es_hormiga": propuesta.es_hormiga,
+        },
+    )
+    return regla
+
+
+def descartar_propuesta(propuesta):
+    if propuesta.estado == ESTADO.PENDIENTE:
+        propuesta.estado = ESTADO.DESCARTADO
+        propuesta.error = ""
+        propuesta.save(update_fields=["estado", "error", "actualizado_en"])
+        actualizar_estado_documento(propuesta.documento)
+
+
+def aceptar_no_duplicados(documento, usuario):
+    """Acepta las pendientes que no parecen duplicadas; devuelve (aceptadas, con error)."""
+    aceptadas = con_error = 0
+    pendientes = documento.propuestas.filter(
+        estado=ESTADO.PENDIENTE, posible_duplicado_de__isnull=True
+    ).order_by("fecha", "id")
+    for propuesta in pendientes:
+        try:
+            aceptar_propuesta(propuesta, usuario)
+            aceptadas += 1
+        except ValidationError:
+            con_error += 1
+    return aceptadas, con_error
+
+
+def descartar_todas(documento):
+    documento.propuestas.filter(estado=ESTADO.PENDIENTE).update(estado=ESTADO.DESCARTADO)
+    actualizar_estado_documento(documento)
+
+
+def actualizar_estado_documento(documento):
+    estados = set(documento.propuestas.values_list("estado", flat=True))
+    if not estados or ESTADO.PENDIENTE in estados:
+        return
+    documento.estado = (
+        Documento.Estado.CONFIRMADO if ESTADO.ACEPTADO in estados else Documento.Estado.DESCARTADO
+    )
+    documento.save(update_fields=["estado", "actualizado_en"])
+
+
+def actualizar_saldo(documento):
+    """IMP-12: usa el saldo al corte del estado de cuenta como saldo actual de la cuenta."""
+    if documento.cuenta is None or documento.saldo_al_corte is None:
+        return False
+    cuenta = documento.cuenta
+    cuenta.saldo_actual = documento.saldo_al_corte
+    cuenta.fecha_saldo = documento.periodo_fin or timezone.localdate()
+    cuenta.save(update_fields=["saldo_actual", "fecha_saldo", "actualizado_en"])
+    return True
