@@ -1,10 +1,13 @@
 from django.contrib.auth import views as auth
 from django.urls import path
 
-from apps.core import vistas
+from apps.core import pwa, vistas
 from apps.core.formularios import FormularioEntrada
 
 urlpatterns = [
+    path("manifest.webmanifest", pwa.manifiesto, name="manifiesto"),
+    path("sw.js", pwa.service_worker, name="service_worker"),
+    path("sin-conexion/", pwa.sin_conexion, name="sin_conexion"),
     path("", vistas.inicio, name="inicio"),
     path(
         "entrar/",

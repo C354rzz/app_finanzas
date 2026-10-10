@@ -25,3 +25,8 @@ document.addEventListener("change", (evento) => {
   const casilla = evento.target.form?.querySelector("[name=es_extraordinario]");
   if (casilla) casilla.checked = lista.split(" ").includes(evento.target.value);
 });
+
+// PWA: el service worker permite instalar la app y muestra un aviso sin conexión.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+}

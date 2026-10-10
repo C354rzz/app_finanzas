@@ -1,0 +1,20 @@
+{% load static %}<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sin conexión · Finanzas</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-slate-900">
+  <main class="max-w-sm space-y-4 text-center">
+    <h1 class="text-xl font-semibold">Sin conexión</h1>
+    <p class="text-slate-600">
+      La app necesita conectarse a tu PC. Revisa que esté encendida y que estés en la red de casa
+      o con Tailscale activo.
+    </p>
+    <button type="button" onclick="location.reload()"
+            class="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white">Reintentar</button>
+  </main>
+</body>
+</html>
