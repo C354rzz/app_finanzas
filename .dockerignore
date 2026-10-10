@@ -18,4 +18,5 @@
 **/*.csv
 **/.env
 **/.env.*
+**/respaldos
 **/__pycache__

@@ -40,7 +40,7 @@ flowchart LR
     U -- "Fuera de casa" --> TS --> APP
     APP -- "Solo texto del PDF<br/>durante la importación" --> CL
     PC -- "git push" --> GH
-    APP -- "pg_dump + archivos" --> OD
+    APP -- "respaldo ZIP (datos + PDFs)" --> OD
 ```
 
 ## 3. Vista de contenedores (Docker Compose)
@@ -52,7 +52,7 @@ flowchart TB
         WEB["<b>web</b><br/>Gunicorn + Django 5.2<br/>vistas HTMX, admin, estáticos (WhiteNoise)<br/>puerto 8000"]
         WRK["<b>worker</b><br/>Django-Q2 (qcluster)<br/>misma imagen que web<br/>ejecuta importaciones"]
         DB[("<b>db</b><br/>PostgreSQL 17<br/>datos + cola de tareas")]
-        BK["<b>backup</b> (perfil opcional)<br/>pg_dump + copia de media"]
+        BK["<b>respaldo</b> (Programador de tareas)<br/>manage.py respaldar → ZIP con datos y PDFs"]
     end
     V1[["volumen pgdata"]]
     V2[["volumen media<br/>(PDF subidos)"]]
@@ -277,7 +277,7 @@ Finanzas\                        (OneDrive)
     ├── .env.example                 (.env real NO va a git)
     ├── pyproject.toml / uv.lock
     ├── docs/                        (ARQUITECTURA.md, DEF.md, modelo-datos.dbml, superpowers/plans/)
-    ├── scripts/                     (backup.ps1, restore.ps1, deploy.ps1)
+    ├── scripts/                     (respaldar.ps1, restaurar.ps1, programar_respaldo.ps1, importar_excel.ps1)
     ├── finanzas/                    (settings, urls)
     ├── apps/
     │   ├── core/  catalogos/  movimientos/  presupuesto/
@@ -296,7 +296,7 @@ Finanzas\                        (OneDrive)
 | Datos reales en git | `.gitignore` de `media/`, `.env` y `*.pdf`; fixtures sintéticos; pre-commit que bloquea PDFs. |
 | Clave de API expuesta | Solo en `.env`; nunca en logs ni en la interfaz. |
 | Acceso no autorizado | Login obligatorio, contraseñas con hash de Django, solo HTTPS remoto vía Tailscale, sin puertos abiertos al router. |
-| Pérdida de datos | Respaldo diario (Programador de tareas de Windows → `scripts/backup.ps1`) a OneDrive; restauración probada (RF-DAT-02). |
+| Pérdida de datos | Respaldo diario (Programador de tareas de Windows → `scripts/respaldar.ps1`) a OneDrive; restauración probada (RF-DAT-02). |
 | Prompt injection desde el PDF | El texto del documento va como dato, no como instrucción; la salida está restringida al esquema; el usuario revisa todo antes de guardar. |
 
 ## 12. Calidad y pruebas

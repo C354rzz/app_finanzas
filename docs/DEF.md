@@ -61,7 +61,7 @@ Prioridad: **M** = obligatorio para v1 · **D** = deseable en v1.
 | ID | Requisito | Prior. |
 |---|---|---|
 | RF-ACC-01 | El usuario inicia sesión con email y contraseña. Toda pantalla, salvo el login, requiere sesión. | M |
-| RF-ACC-02 | Al crear el hogar se siembran las 12 categorías del Excel con sus iconos, los conceptos del Excel del usuario y el catálogo de tasas de mercado. | M |
+| RF-ACC-02 | Al crear el hogar se siembran las 12 categorías del Excel con sus iconos, los conceptos del Excel del usuario y el catálogo de tasas de mercado. *(Los conceptos y el catálogo de tasas se cargan con la importación del Excel, RF-ACC-04: no se guardan datos de la plantilla en el repositorio.)* | M |
 | RF-ACC-03 | Un usuario solo ve y modifica datos de su hogar. | M |
 | RF-ACC-04 | Importación inicial única desde el Excel: plantilla de presupuesto, cuentas/deudas, metas y activos. | D |
 

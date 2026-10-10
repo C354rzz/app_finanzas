@@ -8,6 +8,8 @@
 *.xml
 media/
 backups/
+respaldos/
+respaldos.log
 
 # --- Secretos ---
 .env

@@ -39,6 +39,39 @@ Luego entra a http://localhost:8000 con tu email y contraseña:
 
 Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `DJANGO_ALLOWED_HOSTS` en `.env`).
 
+### Cargar tu Excel (una sola vez)
+
+Trae tu presupuesto, conceptos, tarjetas, créditos, metas, activos y el catálogo de tasas de mercado del «Financial Planner». Solo crea lo que falta: no duplica ni cambia lo que ya capturaste.
+
+```powershell
+# 1) Simulación: muestra cuántos registros se crearían, sin guardar nada.
+powershell -ExecutionPolicy Bypass -File scripts\importar_excel.ps1 -Archivo "..\2026\documentos\Financial Planner template.xlsx"
+# 2) Si los números se ven bien, importa de verdad.
+powershell -ExecutionPolicy Bypass -File scripts\importar_excel.ps1 -Archivo "..\2026\documentos\Financial Planner template.xlsx" -Aplicar
+```
+
+Si aparecen avisos (montos con texto, renglones repetidos), agrega `--detalle` al comando `importar_excel` para verlos. El archivo se copia al contenedor solo mientras se importa.
+
+## Uso diario y acceso desde el celular
+
+**Modo de uso diario** (gunicorn, sin depuración). En `.env`: `DJANGO_DEBUG=0` y una `DJANGO_SECRET_KEY` larga y aleatoria. Luego:
+
+```powershell
+docker compose -f docker-compose.yml up -d --build
+```
+
+Para volver al modo desarrollo: `docker compose up -d`. Después de actualizar el código (`git pull`), repite el comando de uso diario.
+
+**Fuera de casa con Tailscale** (HTTPS sin abrir puertos del router):
+
+1. Instala Tailscale en la PC y en el celular con la misma cuenta.
+2. En https://login.tailscale.com/admin/dns activa **MagicDNS** y **HTTPS Certificates**.
+3. En la PC (PowerShell): `tailscale serve --bg 8000`. Muestra tu dirección, por ejemplo `https://mi-pc.tail1234.ts.net`.
+4. En `.env` agrega el nombre a `DJANGO_ALLOWED_HOSTS` (`localhost,127.0.0.1,mi-pc.tail1234.ts.net`) y la dirección completa a `DJANGO_CSRF_TRUSTED_ORIGINS` (`https://mi-pc.tail1234.ts.net`). Reinicia con el comando de uso diario.
+5. En el celular abre esa dirección e instala la app: en Android, menú ⋮ → **Instalar app**; en iPhone (Safari), Compartir → **Agregar a inicio**.
+
+La app solo responde mientras la PC está encendida. Sin conexión verás el aviso «Sin conexión», nunca datos guardados.
+
 ## Importar documentos con IA
 
 1. Crea una clave en https://platform.claude.com y ponla en `.env`: `ANTHROPIC_API_KEY=sk-ant-...`.
@@ -49,3 +82,14 @@ Desde el celular en la misma red: `http://<IP-de-tu-PC>:8000` (agrega la IP a `D
 - Un estado de cuenta típico cuesta unos centavos de dólar; el costo del mes aparece en la pantalla Importar.
 - El contenedor `worker` procesa los documentos. Si cambias código de importación: `docker compose restart worker`.
 - Un PDF escaneado (sin texto) queda en error: la v1 no tiene OCR.
+
+## Respaldos
+
+Cada respaldo es un ZIP con la base de datos y los PDFs importados. Contiene tus datos personales: guárdalo en una carpeta privada.
+
+1. En `.env`, elige la carpeta (de preferencia dentro de OneDrive y fuera de este repositorio), por ejemplo `CARPETA_RESPALDOS=C:/Users/tu-usuario/OneDrive/Respaldos/finanzas`, y reinicia: `docker compose up -d` (o el comando de uso diario).
+2. Respaldo manual: `powershell -ExecutionPolicy Bypass -File scripts\respaldar.ps1`. El resultado queda en `respaldos.log`.
+3. Respaldo diario automático (una sola vez): `powershell -ExecutionPolicy Bypass -File scripts\programar_respaldo.ps1 -Hora 21:00`. Se conservan los 30 más recientes.
+4. Restaurar: `powershell -ExecutionPolicy Bypass -File scripts\restaurar.ps1 finanzas-AAAAMMDD-HHMMSS.zip` (pide escribir `RESTAURAR`). Antes de reemplazar, guarda un respaldo `finanzas-antes-de-restaurar-…` de los datos actuales. Si el respaldo está dañado o es de una versión más nueva de la app, no cambia nada.
+
+En una PC nueva: instala Docker, clona el repositorio, crea `.env`, levanta la app y restaura el último respaldo (no hace falta `crear_hogar`).
